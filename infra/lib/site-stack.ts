@@ -138,7 +138,7 @@ export class SiteStack extends cdk.Stack {
           statement: {
             rateBasedStatement: {
               aggregateKeyType: 'IP',
-              evaluationWindowSec: 300,
+              evaluationWindowSec: 600,
               limit: 1000,
             },
           },
