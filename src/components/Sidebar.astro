@@ -1,0 +1,137 @@
+---
+import { site, nav, socials } from '../config/site';
+
+const current = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) =>
+  !href.startsWith('http') && (href.replace(/\/$/, '') || '/') === current;
+---
+
+<aside class="sidebar">
+  <div class="inner">
+    <a class="brand" href="/">{site.name}</a>
+
+    <nav aria-label="Primary">
+      <ul>
+        {
+          nav.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                aria-current={isCurrent(link.href) ? 'page' : undefined}
+                {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
+                {link.label}
+                {link.external && <span class="ext" aria-hidden="true">↗</span>}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <nav class="socials" aria-label="Social">
+      {
+        socials.map((s) => (
+          <a href={s.href} target="_blank" rel="noopener noreferrer">
+            {s.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    flex: 0 0 16rem;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .inner {
+    position: sticky;
+    top: 0;
+    max-height: 100dvh;
+    overflow-y: auto;
+    padding: 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .brand {
+    font-weight: 650;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+  }
+
+  .brand:hover {
+    text-decoration: none;
+  }
+
+  nav ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    color: var(--color-muted);
+    padding: 0.3rem 0;
+  }
+
+  nav a:hover,
+  nav a[aria-current='page'] {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  nav a[aria-current='page'] {
+    font-weight: 600;
+  }
+
+  .ext {
+    font-size: 0.8em;
+    opacity: 0.7;
+  }
+
+  .socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.85rem;
+    font-size: 0.85rem;
+    margin-top: auto;
+  }
+
+  .socials a {
+    color: var(--color-muted);
+    padding: 0;
+  }
+
+  /* Collapse to a top bar on narrow screens. */
+  @media (max-width: 820px) {
+    .sidebar {
+      flex-basis: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .inner {
+      position: static;
+      max-height: none;
+      gap: 1rem;
+    }
+
+    nav ul {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 0.25rem 1rem;
+    }
+  }
+</style>

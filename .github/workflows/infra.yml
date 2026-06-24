@@ -1,0 +1,43 @@
+name: Deploy infra
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  HOSTED_ZONE_ID: ${{ secrets.HOSTED_ZONE_ID }}
+  AWS_REGION: us-east-1
+
+jobs:
+  cdk-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install
+        working-directory: infra
+        run: npm ci
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/website-infra-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk deploy
+        working-directory: infra
+        run: npx cdk deploy --all --require-approval never

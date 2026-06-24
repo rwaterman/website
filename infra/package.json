@@ -1,0 +1,19 @@
+{
+  "name": "website-infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --all --require-approval never"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.260.0",
+    "constructs": "^10.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "aws-cdk": "^2.1128.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}

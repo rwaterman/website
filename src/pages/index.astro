@@ -1,0 +1,121 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { site, hobbies } from '../config/site';
+---
+
+<Layout>
+  <section class="hero">
+    <h1>{site.name}</h1>
+    <p class="role">{site.role}</p>
+    <p class="intro">{site.intro}</p>
+    <div class="actions">
+      <a class="button" href={site.links.resume}>Resume</a>
+      <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
+        GitHub <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="hobbies-title">
+    <h2 id="hobbies-title">Hobbies</h2>
+    <div class="cards">
+      {
+        hobbies.map((hobby) => (
+          <article class="card">
+            <h3>{hobby.title}</h3>
+            <p>{hobby.blurb}</p>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="elsewhere-title">
+    <h2 id="elsewhere-title">Elsewhere</h2>
+    <div class="cards">
+      <a class="card card--link" href={site.links.blog} target="_blank" rel="noopener noreferrer">
+        <h3>Blog <span aria-hidden="true">↗</span></h3>
+        <p>Writing on cloud architecture, engineering, and whatever I'm building.</p>
+      </a>
+      <a class="card card--link" href={site.links.knowledgeBase} target="_blank" rel="noopener noreferrer">
+        <h3>Knowledge Base <span aria-hidden="true">↗</span></h3>
+        <p>A digital garden of notes, references, and technical docs.</p>
+      </a>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: 1rem 0 2.5rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+  }
+
+  .role {
+    color: var(--color-muted);
+    font-size: 1.15rem;
+    margin-top: 0.35rem;
+  }
+
+  .intro {
+    margin-top: 1.25rem;
+    max-width: 42rem;
+    font-size: 1.05rem;
+  }
+
+  .actions {
+    margin-top: 1.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .block {
+    padding-top: 2.5rem;
+  }
+
+  .block h2 {
+    font-size: 1.4rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+  }
+
+  .card h3 {
+    font-size: 1.1rem;
+  }
+
+  .card p {
+    margin-top: 0.5rem;
+    color: var(--color-muted);
+  }
+
+  .card--link {
+    color: inherit;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .card--link:hover {
+    text-decoration: none;
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+  }
+
+  .card--link h3 {
+    color: var(--color-accent);
+  }
+</style>

@@ -1,0 +1,99 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { site, socials } from '../config/site';
+
+const sections = [
+  {
+    title: 'Sites',
+    links: [
+      { label: 'Blog', href: site.links.blog },
+      { label: 'Knowledge Base', href: site.links.knowledgeBase },
+    ],
+  },
+  { title: 'Social', links: socials },
+];
+---
+
+<Layout title="Linkfarm" description={`All of ${site.name}'s links in one place`}>
+  <section class="page-head">
+    <h1>Linkfarm</h1>
+    <p>Everywhere else you can find me.</p>
+  </section>
+
+  {
+    sections.map((section) => (
+      <section class="group">
+        <h2>{section.title}</h2>
+        <ul class="links">
+          {section.links.map((link) => (
+            <li>
+              <a href={link.href} target="_blank" rel="noopener noreferrer">
+                <span>{link.label}</span>
+                <span class="arrow" aria-hidden="true">↗</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</Layout>
+
+<style>
+  .page-head {
+    margin-bottom: 2rem;
+  }
+
+  .page-head h1 {
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+  }
+
+  .page-head p {
+    margin-top: 0.5rem;
+    color: var(--color-muted);
+  }
+
+  .group {
+    margin-bottom: 2rem;
+    max-width: 32rem;
+  }
+
+  .group h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .links {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .links a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 550;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .links a:hover {
+    text-decoration: none;
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+  }
+
+  .arrow {
+    color: var(--color-accent);
+  }
+</style>
