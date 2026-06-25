@@ -31,7 +31,7 @@ export interface Project {
 const isDevDeploy = process.env.SITE === 'https://dev.rickgwaterman.com';
 const externalLinks = {
   blog: `https://blog${isDevDeploy ? '-dev' : ''}.rickgwaterman.com`,
-  notes: `https://docs${isDevDeploy ? '-dev' : ''}.rickgwaterman.com`,
+  notes: `https://notes${isDevDeploy ? '-dev' : ''}.rickgwaterman.com`,
 };
 
 export const site = {
