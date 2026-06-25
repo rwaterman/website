@@ -4,28 +4,35 @@
   --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas,
     'DejaVu Sans Mono', monospace;
 
-  --color-bg: #fbfbfd;
+  --color-bg: #f7f7f4;
   --color-surface: #ffffff;
-  --color-text: #1a1a20;
-  --color-muted: #5b5b66;
-  --color-border: #e6e6ec;
-  --color-accent: #4f46e5;
+  --color-text: #171717;
+  --color-muted: #62635f;
+  --color-border: #dfdfd8;
+  --color-border-strong: #c7c8bd;
+  --color-grid: color-mix(in srgb, var(--color-border) 70%, transparent);
+  --color-accent: #0f766e;
   --color-accent-contrast: #ffffff;
+  --shadow-soft: 0 1px 2px rgb(23 23 23 / 0.04), 0 16px 40px rgb(23 23 23 / 0.06);
+  --shadow-lift: 0 2px 6px rgb(23 23 23 / 0.07), 0 18px 42px rgb(23 23 23 / 0.1);
 
-  --max-width: 52rem;
-  --radius: 12px;
+  --max-width: 68rem;
+  --radius: 8px;
   --space: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #0d0d10;
-    --color-surface: #16161c;
-    --color-text: #ececf1;
-    --color-muted: #9b9ba6;
-    --color-border: #26262f;
-    --color-accent: #8b8cf0;
-    --color-accent-contrast: #0d0d10;
+    --color-bg: #10110f;
+    --color-surface: #171916;
+    --color-text: #f1f1eb;
+    --color-muted: #adafa6;
+    --color-border: #2d302a;
+    --color-border-strong: #42463d;
+    --color-accent: #5eead4;
+    --color-accent-contrast: #082f2d;
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.16), 0 18px 48px rgb(0 0 0 / 0.22);
+    --shadow-lift: 0 2px 8px rgb(0 0 0 / 0.2), 0 22px 54px rgb(0 0 0 / 0.3);
   }
 }
 
@@ -51,7 +58,9 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   color: var(--color-text);
-  background: var(--color-bg);
+  background:
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), var(--color-grid) calc(100% - 1px)) 0 0 / min(9vw, 7rem) 100%,
+    var(--color-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -67,7 +76,7 @@ main {
   width: 100%;
   max-width: var(--max-width);
   margin-inline: auto;
-  padding: clamp(2rem, 5vw, 4rem) 1.25rem;
+  padding: clamp(2.25rem, 5vw, 5rem) 1.5rem;
 }
 
 /* Sidebar stacks above content on narrow screens. */
@@ -81,8 +90,8 @@ h1,
 h2,
 h3 {
   line-height: 1.2;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 a {
@@ -114,19 +123,21 @@ svg {
   padding: 0.6rem 1.1rem;
   border-radius: var(--radius);
   border: 1px solid transparent;
-  font-weight: 550;
+  font-weight: 650;
   background: var(--color-accent);
   color: var(--color-accent-contrast);
-  transition: filter 0.15s ease, background 0.15s ease;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.24) inset;
+  transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
 }
 
 .button:hover {
   text-decoration: none;
   filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .button--ghost {
-  background: transparent;
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
   color: var(--color-text);
   border-color: var(--color-border);
 }

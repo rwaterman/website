@@ -7,16 +7,16 @@ const sections = [
     title: 'Sites',
     links: [
       { label: 'Blog', href: site.links.blog },
-      { label: 'Knowledge Base', href: site.links.knowledgeBase },
+      { label: 'Notes', href: site.links.notes },
     ],
   },
   { title: 'Social', links: socials },
 ];
 ---
 
-<Layout title="Linkfarm" description={`All of ${site.name}'s links in one place`}>
+<Layout title="Links" description={`All of ${site.name}'s links in one place`}>
   <section class="page-head">
-    <h1>Linkfarm</h1>
+    <h1>Links</h1>
     <p>Everywhere else you can find me.</p>
   </section>
 
@@ -83,14 +83,16 @@ const sections = [
     border-radius: var(--radius);
     background: var(--color-surface);
     color: var(--color-text);
-    font-weight: 550;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    box-shadow: var(--shadow-soft);
+    font-weight: 650;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .links a:hover {
     text-decoration: none;
     border-color: var(--color-accent);
     transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
   }
 
   .arrow {

@@ -1,29 +1,68 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { site, hobbies } from '../config/site';
+import { site } from '../config/site';
+
+const focusAreas = [
+  {
+    title: 'Cloud architecture',
+    blurb: 'AWS account strategy, delivery paths, and production systems shaped for long-term ownership.',
+  },
+  {
+    title: 'Serverless platforms',
+    blurb: 'Event-driven services, APIs, and deployment workflows that keep teams moving without excess machinery.',
+  },
+  {
+    title: 'Data systems',
+    blurb: 'Practical data pipelines, storage models, and observability patterns for systems people can operate.',
+  },
+];
 ---
 
 <Layout>
   <section class="hero">
-    <h1>{site.name}</h1>
-    <p class="role">{site.role}</p>
-    <p class="intro">{site.intro}</p>
-    <div class="actions">
-      <a class="button" href={site.links.resume}>Resume</a>
-      <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
-        GitHub <span aria-hidden="true">↗</span>
-      </a>
+    <div class="hero-copy">
+      <p class="eyebrow">{site.role}</p>
+      <h1>{site.name}</h1>
+      <p class="intro">{site.intro}</p>
+      <div class="actions">
+        <a class="button" href={site.links.resume}>Resume</a>
+        <a class="button button--ghost" href="/projects">Projects</a>
+        <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </div>
     </div>
+
+    <aside class="profile-panel" aria-label="Professional focus">
+      <div class="mark" aria-hidden="true">RW</div>
+      <dl>
+        <div>
+          <dt>10+ years</dt>
+          <dd>Backend and cloud systems</dd>
+        </div>
+        <div>
+          <dt>AWS</dt>
+          <dd>Serverless, platform, and infrastructure delivery</dd>
+        </div>
+        <div>
+          <dt>Current focus</dt>
+          <dd>Reliable architecture for product teams</dd>
+        </div>
+      </dl>
+    </aside>
   </section>
 
-  <section class="block" aria-labelledby="hobbies-title">
-    <h2 id="hobbies-title">Hobbies</h2>
+  <section class="block" aria-labelledby="focus-title">
+    <div class="section-head">
+      <h2 id="focus-title">Focus</h2>
+      <p>Architecture work grounded in maintainable systems and clear delivery tradeoffs.</p>
+    </div>
     <div class="cards">
       {
-        hobbies.map((hobby) => (
+        focusAreas.map((area) => (
           <article class="card">
-            <h3>{hobby.title}</h3>
-            <p>{hobby.blurb}</p>
+            <h3>{area.title}</h3>
+            <p>{area.blurb}</p>
           </article>
         ))
       }
@@ -31,15 +70,18 @@ import { site, hobbies } from '../config/site';
   </section>
 
   <section class="block" aria-labelledby="elsewhere-title">
-    <h2 id="elsewhere-title">Elsewhere</h2>
-    <div class="cards">
+    <div class="section-head">
+      <h2 id="elsewhere-title">Elsewhere</h2>
+      <p>Long-form writing and working notes live outside the main site.</p>
+    </div>
+    <div class="cards cards--compact">
       <a class="card card--link" href={site.links.blog} target="_blank" rel="noopener noreferrer">
         <h3>Blog <span aria-hidden="true">↗</span></h3>
         <p>Writing on cloud architecture, engineering, and whatever I'm building.</p>
       </a>
-      <a class="card card--link" href={site.links.knowledgeBase} target="_blank" rel="noopener noreferrer">
-        <h3>Knowledge Base <span aria-hidden="true">↗</span></h3>
-        <p>A digital garden of notes, references, and technical docs.</p>
+      <a class="card card--link" href={site.links.notes} target="_blank" rel="noopener noreferrer">
+        <h3>Notes <span aria-hidden="true">↗</span></h3>
+        <p>References, implementation notes, and technical docs.</p>
       </a>
     </div>
   </section>
@@ -47,23 +89,34 @@ import { site, hobbies } from '../config/site';
 
 <style>
   .hero {
-    padding: 1rem 0 2.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+    gap: clamp(1.25rem, 4vw, 3rem);
+    align-items: center;
+    padding: 0.5rem 0 3.25rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .hero h1 {
-    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    font-size: clamp(2.6rem, 7vw, 4.8rem);
+    letter-spacing: -0.04em;
   }
 
-  .role {
-    color: var(--color-muted);
-    font-size: 1.15rem;
-    margin-top: 0.35rem;
+  .eyebrow {
+    color: var(--color-accent);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.45rem;
   }
 
   .intro {
     margin-top: 1.25rem;
-    max-width: 42rem;
-    font-size: 1.05rem;
+    max-width: 43rem;
+    color: var(--color-muted);
+    font-size: clamp(1.08rem, 2vw, 1.25rem);
+    line-height: 1.55;
   }
 
   .actions {
@@ -73,19 +126,94 @@ import { site, hobbies } from '../config/site';
     gap: 0.75rem;
   }
 
-  .block {
-    padding-top: 2.5rem;
+  .profile-panel {
+    position: relative;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 11%, transparent), transparent 42%),
+      var(--color-surface);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
   }
 
-  .block h2 {
-    font-size: 1.4rem;
+  .profile-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--color-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(160deg, black, transparent 70%);
+    pointer-events: none;
+  }
+
+  .mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    margin: 1.25rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 8px;
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: clamp(3.5rem, 10vw, 5rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  dl {
+    position: relative;
+    display: grid;
+    border-top: 1px solid var(--color-border);
+  }
+
+  dl div {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  dl div:last-child {
+    border-bottom: 0;
+  }
+
+  dt {
+    font-weight: 700;
+  }
+
+  dd {
+    margin-top: 0.2rem;
+    color: var(--color-muted);
+  }
+
+  .block {
+    padding-top: 3rem;
+  }
+
+  .section-head {
+    max-width: 40rem;
     margin-bottom: 1.1rem;
+  }
+
+  .section-head h2 {
+    font-size: 1.4rem;
+  }
+
+  .section-head p {
+    margin-top: 0.35rem;
+    color: var(--color-muted);
   }
 
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
     gap: 1rem;
+  }
+
+  .cards--compact {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   }
 
   .card {
@@ -93,6 +221,7 @@ import { site, hobbies } from '../config/site';
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     background: var(--color-surface);
+    box-shadow: var(--shadow-soft);
   }
 
   .card h3 {
@@ -106,16 +235,31 @@ import { site, hobbies } from '../config/site';
 
   .card--link {
     color: inherit;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .card--link:hover {
     text-decoration: none;
     border-color: var(--color-accent);
     transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
   }
 
   .card--link h3 {
     color: var(--color-accent);
+  }
+
+  @media (max-width: 1080px) {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+
+    .hero {
+      align-items: start;
+    }
+
+    .profile-panel {
+      max-width: 30rem;
+    }
   }
 </style>
