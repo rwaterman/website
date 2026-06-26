@@ -13,5 +13,6 @@ for (const site of SITE_ENVS) {
     env,
     site,
     oidcProvider: shared.oidcProvider,
+    webAclArn: shared.webAclArn,
   });
 }

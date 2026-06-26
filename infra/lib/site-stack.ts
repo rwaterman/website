@@ -13,12 +13,13 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { HOSTED_ZONE_ID, ZONE_NAME, GITHUB_REPO, SiteEnv } from './site-config';
 
 export interface SiteStackProps extends cdk.StackProps {
   site: SiteEnv;
   oidcProvider: iam.IOpenIdConnectProvider;
+  /** ARN of the shared account-wide CloudFront WebACL, owned by SharedStack. */
+  webAclArn: string;
 }
 
 /**
@@ -29,7 +30,7 @@ export interface SiteStackProps extends cdk.StackProps {
 export class SiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
-    const { site, oidcProvider } = props;
+    const { site, oidcProvider, webAclArn } = props;
     const isProd = site.envName === 'prod';
     const wwwDomain = `www.${ZONE_NAME}`;
 
@@ -59,143 +60,94 @@ export class SiteStack extends cdk.Stack {
       code: cloudfront.FunctionCode.fromInline(buildFunctionCode(site.includeWww, ZONE_NAME)),
     });
 
-    const contactRecipientParameterName = `/website/${site.envName}/contact-recipient`;
-    const contactRateLimitTable = new dynamodb.Table(this, 'ContactRateLimitTable', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      encryption: dynamodb.TableEncryption.AWS_MANAGED,
-      timeToLiveAttribute: 'expiresAt',
-      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-    });
-    const contactLogGroup = new logs.LogGroup(this, 'ContactFunctionLogGroup', {
-      retention: logs.RetentionDays.ONE_MONTH,
-      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-    });
-    const contactFunction = new lambda.Function(this, 'ContactFunction', {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(buildContactFunctionCode()),
-      memorySize: 128,
-      timeout: cdk.Duration.seconds(10),
-      logGroup: contactLogGroup,
-      environment: {
-        ALLOWED_ORIGIN: `https://${site.domainName}`,
-        RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
-        RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
-        RATE_LIMIT_WINDOW_SECONDS: '3600',
-        MAX_MESSAGES_GLOBAL: '20',
-        MAX_MESSAGES_PER_IP: '5',
-        MAX_MESSAGES_PER_REPLY_TO: '3',
-      },
-    });
-    contactRateLimitTable.grantReadWriteData(contactFunction);
-    contactFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['ssm:GetParameter'],
-        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter${contactRecipientParameterName}`],
-      }),
-    );
-    contactFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['ses:SendEmail'],
-        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
-      }),
-    );
+    // Contact form (Lambda + HTTP API + DynamoDB rate-limiter). Parked behind a per-env
+    // flag: the code stays in the repo but nothing deploys until enableContactForm is set.
+    // Functional prerequisites when enabling: a verified SES sending identity and the
+    // SecureString SSM parameter `/website/<env>/contact-recipient`.
+    let contactApi: apigwv2.HttpApi | undefined;
+    let contactRecipientParameterName: string | undefined;
+    if (site.enableContactForm) {
+      contactRecipientParameterName = `/website/${site.envName}/contact-recipient`;
+      const contactRateLimitTable = new dynamodb.Table(this, 'ContactRateLimitTable', {
+        partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        encryption: dynamodb.TableEncryption.AWS_MANAGED,
+        timeToLiveAttribute: 'expiresAt',
+        removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      });
+      const contactLogGroup = new logs.LogGroup(this, 'ContactFunctionLogGroup', {
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      });
+      const contactFunction = new lambda.Function(this, 'ContactFunction', {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromInline(buildContactFunctionCode()),
+        memorySize: 128,
+        timeout: cdk.Duration.seconds(10),
+        logGroup: contactLogGroup,
+        environment: {
+          ALLOWED_ORIGIN: `https://${site.domainName}`,
+          RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
+          RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
+          RATE_LIMIT_WINDOW_SECONDS: '3600',
+          MAX_MESSAGES_GLOBAL: '20',
+          MAX_MESSAGES_PER_IP: '5',
+          MAX_MESSAGES_PER_REPLY_TO: '3',
+        },
+      });
+      contactRateLimitTable.grantReadWriteData(contactFunction);
+      contactFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['ssm:GetParameter'],
+          resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter${contactRecipientParameterName}`],
+        }),
+      );
+      contactFunction.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['ses:SendEmail'],
+          resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
+        }),
+      );
 
-    const contactApi = new apigwv2.HttpApi(this, 'ContactApi', {
-      apiName: `website-contact-${site.envName}`,
-      description: `Contact form endpoint for ${site.domainName}`,
-      createDefaultStage: false,
-    });
-    contactApi.addRoutes({
-      path: '/api/contact',
-      methods: [apigwv2.HttpMethod.POST],
-      integration: new integrations.HttpLambdaIntegration('ContactIntegration', contactFunction),
-    });
-    new apigwv2.HttpStage(this, 'ContactApiDefaultStage', {
-      httpApi: contactApi,
-      stageName: '$default',
-      autoDeploy: true,
-      throttle: {
-        burstLimit: 3,
-        rateLimit: 0.2,
-      },
-    });
+      contactApi = new apigwv2.HttpApi(this, 'ContactApi', {
+        apiName: `website-contact-${site.envName}`,
+        description: `Contact form endpoint for ${site.domainName}`,
+        createDefaultStage: false,
+      });
+      contactApi.addRoutes({
+        path: '/api/contact',
+        methods: [apigwv2.HttpMethod.POST],
+        integration: new integrations.HttpLambdaIntegration('ContactIntegration', contactFunction),
+      });
+      new apigwv2.HttpStage(this, 'ContactApiDefaultStage', {
+        httpApi: contactApi,
+        stageName: '$default',
+        autoDeploy: true,
+        throttle: {
+          burstLimit: 3,
+          rateLimit: 0.2,
+        },
+      });
+    }
 
-    const contactWebAcl = new wafv2.CfnWebACL(this, 'ContactWebAcl', {
-      defaultAction: { allow: {} },
-      scope: 'CLOUDFRONT',
-      visibilityConfig: {
-        cloudWatchMetricsEnabled: true,
-        metricName: `website-contact-${site.envName}`,
-        sampledRequestsEnabled: true,
-      },
-      rules: [
-        {
-          name: 'SiteWideRateLimit',
-          priority: 0,
-          action: { block: {} },
-          statement: {
-            rateBasedStatement: {
-              aggregateKeyType: 'IP',
-              evaluationWindowSec: 600,
-              limit: 1000,
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `website-site-rate-${site.envName}`,
-            sampledRequestsEnabled: true,
-          },
-        },
-        {
-          name: 'AmazonIpReputationList',
-          priority: 1,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesAmazonIpReputationList',
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `website-ip-reputation-${site.envName}`,
-            sampledRequestsEnabled: true,
-          },
-        },
-        {
-          name: 'ContactPathRateLimit',
-          priority: 2,
-          action: { block: {} },
-          statement: {
-            rateBasedStatement: {
-              aggregateKeyType: 'IP',
-              evaluationWindowSec: 300,
-              limit: 100,
-              scopeDownStatement: {
-                byteMatchStatement: {
-                  fieldToMatch: { uriPath: {} },
-                  positionalConstraint: 'EXACTLY',
-                  searchString: '/api/contact',
-                  textTransformations: [{ priority: 0, type: 'NONE' }],
-                },
-              },
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `website-contact-path-rate-${site.envName}`,
-            sampledRequestsEnabled: true,
-          },
-        },
-      ],
-    });
+    const additionalBehaviors: Record<string, cloudfront.BehaviorOptions> = {};
+    if (contactApi) {
+      additionalBehaviors['api/contact'] = {
+        origin: new origins.HttpOrigin(`${contactApi.apiId}.execute-api.${this.region}.amazonaws.com`, {
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      };
+    }
 
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       domainNames,
       certificate,
-      webAclId: contactWebAcl.attrArn,
+      webAclId: webAclArn,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       defaultBehavior: {
@@ -208,17 +160,7 @@ export class SiteStack extends cdk.Stack {
           { function: rewriteFunction, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
         ],
       },
-      additionalBehaviors: {
-        'api/contact': {
-          origin: new origins.HttpOrigin(`${contactApi.apiId}.execute-api.${this.region}.amazonaws.com`, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-        },
-      },
+      additionalBehaviors,
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 404, responsePagePath: '/404.html', ttl: cdk.Duration.minutes(5) },
         { httpStatus: 404, responseHttpStatus: 404, responsePagePath: '/404.html', ttl: cdk.Duration.minutes(5) },
@@ -272,7 +214,9 @@ export class SiteStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'BucketName', { value: bucket.bucketName });
     new cdk.CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
     new cdk.CfnOutput(this, 'DistributionDomain', { value: distribution.distributionDomainName });
-    new cdk.CfnOutput(this, 'ContactRecipientParameterName', { value: contactRecipientParameterName });
+    if (contactRecipientParameterName) {
+      new cdk.CfnOutput(this, 'ContactRecipientParameterName', { value: contactRecipientParameterName });
+    }
     new cdk.CfnOutput(this, 'ContentRoleArn', { value: contentRole.roleArn });
   }
 }
