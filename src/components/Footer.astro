@@ -4,47 +4,13 @@ import { site } from '../config/site';
 const year = new Date().getFullYear();
 ---
 
-<footer class="site-footer">
-  <div class="inner">
+<footer class="border-t border-border text-[0.9rem] text-muted">
+  <div class="mx-auto flex w-full max-w-[68rem] flex-wrap items-center justify-between gap-3 px-5 py-6">
     <p>© {year} {site.name}</p>
-    <nav aria-label="Footer">
-      <a href={site.links.blog} target="_blank" rel="noopener noreferrer">Blog</a>
-      <a href={site.links.notes} target="_blank" rel="noopener noreferrer">Notes</a>
-      <a href={site.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+    <nav class="flex flex-wrap gap-4" aria-label="Footer">
+      <a class="text-muted hover:text-text" href={site.links.blog} target="_blank" rel="noopener noreferrer">Blog</a>
+      <a class="text-muted hover:text-text" href={site.links.notes} target="_blank" rel="noopener noreferrer">Notes</a>
+      <a class="text-muted hover:text-text" href={site.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
     </nav>
   </div>
 </footer>
-
-<style>
-  .site-footer {
-    border-top: 1px solid var(--color-border);
-    color: var(--color-muted);
-    font-size: 0.9rem;
-  }
-
-  .inner {
-    width: 100%;
-    max-width: var(--max-width);
-    margin-inline: auto;
-    padding: 1.5rem 1.25rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  nav a {
-    color: var(--color-muted);
-  }
-
-  nav a:hover {
-    color: var(--color-text);
-  }
-</style>
