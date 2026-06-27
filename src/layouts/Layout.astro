@@ -36,10 +36,10 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     {canonical && <meta property="og:url" content={canonical} />}
     <meta name="twitter:card" content="summary" />
   </head>
-  <body>
+  <body class="flex min-h-[100dvh] max-[820px]:flex-col font-sans text-text leading-[1.6] antialiased">
     <Sidebar />
-    <div class="content">
-      <main>
+    <div class="flex flex-auto min-w-0 flex-col">
+      <main class="flex-[1_0_auto] w-full max-w-[68rem] mx-auto px-6 py-[clamp(2.25rem,5vw,5rem)]">
         <slot />
       </main>
       <Footer />
