@@ -36,7 +36,7 @@ export const SITE_ENVS: SiteEnv[] = [
     domainName: 'dev.rickgwaterman.com',
     branch: 'develop',
     includeWww: false,
-    enableContactForm: false,
+    enableContactForm: true,
   },
   {
     id: 'Prod',

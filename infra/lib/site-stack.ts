@@ -90,10 +90,13 @@ export class SiteStack extends cdk.Stack {
           ALLOWED_ORIGIN: `https://${site.domainName}`,
           RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
           RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
-          RATE_LIMIT_WINDOW_SECONDS: '3600',
-          MAX_MESSAGES_GLOBAL: '20',
-          MAX_MESSAGES_PER_IP: '5',
-          MAX_MESSAGES_PER_REPLY_TO: '3',
+          // 15-minute fixed window. Per-IP cap of 1 throttles a single sender/bot to
+          // one message per window; per-reply-to mirrors it for IP-rotating reuse of an
+          // address; global is a backstop against distributed (IP-rotating) bots.
+          RATE_LIMIT_WINDOW_SECONDS: '900',
+          MAX_MESSAGES_GLOBAL: '10',
+          MAX_MESSAGES_PER_IP: '1',
+          MAX_MESSAGES_PER_REPLY_TO: '1',
         },
       });
       contactRateLimitTable.grantReadWriteData(contactFunction);
