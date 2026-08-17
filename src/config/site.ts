@@ -29,16 +29,16 @@ export const site = {
   role: 'Lead Cloud Architect',
   /** Used for <title>, meta description, and Open Graph tags. */
   description:
-    'Rick Waterman — Lead Cloud Architect working in AWS serverless, platform engineering, and data systems.',
+    'Rick Waterman — Lead Cloud Architect. 10+ years building backend and cloud systems, focused on AWS serverless architecture and data platforms.',
   intro:
-    'I design and build durable cloud platforms, serverless systems, and data-backed products for teams that need pragmatic architecture and reliable delivery.',
+    'I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. Ten-plus years across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.',
   links: {
     github: 'https://github.com/rwaterman',
     blog: externalLinks.blog,
     notes: externalLinks.notes,
     /** Internal resume page (embeds the PDF). */
     resume: '/resume',
-    /** Placeholder PDF served from public/. Swap in the real resume later. */
+    /** Resume PDF served from public/. */
     resumePdf: '/resume.pdf',
   },
 } as const;
