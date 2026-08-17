@@ -70,6 +70,10 @@ jobs:
           SITE: ${{ steps.target.outputs.site }}
         run: npm run build
 
+      - name: Block indexing on dev
+        if: steps.target.outputs.name == 'dev'
+        run: printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/website-content-${{ steps.target.outputs.name }}
