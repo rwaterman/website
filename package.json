@@ -9,9 +9,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "resume": "typst compile resume/resume.typ public/resume.pdf",
-    "resume:watch": "typst watch resume/resume.typ public/resume.pdf"
+    "astro": "astro"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
