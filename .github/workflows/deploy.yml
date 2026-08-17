@@ -72,7 +72,8 @@ jobs:
 
       - name: Block indexing on dev
         if: steps.target.outputs.name == 'dev'
-        run: printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+        run: |
+          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
