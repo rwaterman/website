@@ -2,6 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import { site } from '../config/site';
 
+const facts = [
+  { key: 'Role', value: site.role },
+  { key: 'Experience', value: '10+ years, backend and cloud systems' },
+  { key: 'Certified', value: 'AWS Developer (2023) · Solutions Architect (2020)' },
+  { key: 'Based', value: 'Vancouver, WA — Portland, OR metro, or remote' },
+];
+
 const focusAreas = [
   {
     title: 'Cloud architecture',
@@ -16,17 +23,21 @@ const focusAreas = [
     blurb: 'Practical data pipelines, storage models, and observability patterns for systems people can operate.',
   },
 ];
+
+const elsewhere = [
+  { label: 'Blog', href: site.links.blog, blurb: "Writing on cloud architecture, engineering, and whatever I'm building." },
+  { label: 'Notes', href: site.links.notes, blurb: 'References, implementation notes, and technical docs.' },
+];
 ---
 
 <Layout>
-  <section
-    class="grid items-center gap-[clamp(1.25rem,4vw,3rem)] border-b border-border pt-2 pb-[3.25rem] grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] max-[1080px]:grid-cols-1 max-[1080px]:items-start"
-  >
+  <section class="grid gap-x-12 gap-y-10 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-end">
     <div>
-      <p class="mb-[0.45rem] text-[0.82rem] font-bold uppercase tracking-[0.08em] text-accent">{site.role}</p>
-      <h1 class="text-[clamp(2.6rem,7vw,4.8rem)] tracking-[-0.04em]">{site.name}</h1>
-      <p class="mt-5 max-w-[43rem] text-[clamp(1.08rem,2vw,1.25rem)] leading-[1.55] text-muted">{site.intro}</p>
-      <div class="mt-7 flex flex-wrap gap-3">
+      <h1 class="font-display text-[clamp(3.5rem,11vw,7.5rem)] font-bold uppercase leading-[0.9] tracking-[-0.01em]">
+        {site.name}
+      </h1>
+      <p class="mt-6 max-w-[38rem] text-[clamp(1.05rem,1.6vw,1.2rem)] leading-[1.55] text-muted">{site.intro}</p>
+      <div class="mt-8 flex flex-wrap gap-3">
         <a class="button" href={site.links.resume}>Resume</a>
         <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
           GitHub <span aria-hidden="true">↗</span>
@@ -34,93 +45,45 @@ const focusAreas = [
       </div>
     </div>
 
-    <aside
-      class="panel relative overflow-hidden rounded-lg border border-border shadow-soft max-[1080px]:max-w-[30rem]"
-      aria-label="Professional focus"
-    >
-      <div
-        class="relative m-5 grid aspect-square place-items-center rounded-lg border border-border-strong font-mono text-[clamp(3.5rem,10vw,5rem)] font-extrabold leading-none text-text"
-        aria-hidden="true"
-      >
-        RW
-      </div>
-      <dl class="relative grid border-t border-border">
-        <div class="border-b border-border px-5 py-4 last:border-b-0">
-          <dt class="font-bold">10+ years</dt>
-          <dd class="mt-[0.2rem] text-muted">Backend and cloud systems</dd>
-        </div>
-        <div class="border-b border-border px-5 py-4 last:border-b-0">
-          <dt class="font-bold">AWS certified</dt>
-          <dd class="mt-[0.2rem] text-muted">Developer (2023) · Solutions Architect (2020)</dd>
-        </div>
-        <div class="border-b border-border px-5 py-4 last:border-b-0">
-          <dt class="font-bold">Vancouver, WA</dt>
-          <dd class="mt-[0.2rem] text-muted">Portland, OR metro — or remote</dd>
-        </div>
-      </dl>
-    </aside>
-  </section>
-
-  <section class="pt-12" aria-labelledby="focus-title">
-    <div class="mb-[1.1rem] max-w-[40rem]">
-      <h2 class="text-[1.4rem]" id="focus-title">Focus</h2>
-      <p class="mt-[0.35rem] text-muted">Architecture work grounded in maintainable systems and clear delivery tradeoffs.</p>
-    </div>
-    <div class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+    <dl class="border-t border-rule-strong" aria-label="At a glance">
       {
-        focusAreas.map((area) => (
-          <article class="rounded-lg border border-border bg-surface p-5 shadow-soft">
-            <h3 class="text-[1.1rem]">{area.title}</h3>
-            <p class="mt-2 text-muted">{area.blurb}</p>
-          </article>
+        facts.map((fact) => (
+          <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-4 border-b border-rule py-3">
+            <dt class="label pt-[0.2em]">{fact.key}</dt>
+            <dd class="text-[0.95rem] leading-[1.45]">{fact.value}</dd>
+          </div>
         ))
       }
-    </div>
+    </dl>
   </section>
 
-  <section class="pt-12" aria-labelledby="elsewhere-title">
-    <div class="mb-[1.1rem] max-w-[40rem]">
-      <h2 class="text-[1.4rem]" id="elsewhere-title">Elsewhere</h2>
-      <p class="mt-[0.35rem] text-muted">Long-form writing and working notes live outside the main site.</p>
-    </div>
-    <div class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
-      <a
-        class="rounded-lg border border-border bg-surface p-5 text-inherit shadow-soft transition duration-150 hover:-translate-y-0.5 hover:border-accent hover:no-underline hover:shadow-lift"
-        href={site.links.blog} target="_blank" rel="noopener noreferrer"
-      >
-        <h3 class="text-[1.1rem] text-accent">Blog <span aria-hidden="true">↗</span></h3>
-        <p class="mt-2 text-muted">Writing on cloud architecture, engineering, and whatever I'm building.</p>
-      </a>
-      <a
-        class="rounded-lg border border-border bg-surface p-5 text-inherit shadow-soft transition duration-150 hover:-translate-y-0.5 hover:border-accent hover:no-underline hover:shadow-lift"
-        href={site.links.notes} target="_blank" rel="noopener noreferrer"
-      >
-        <h3 class="text-[1.1rem] text-accent">Notes <span aria-hidden="true">↗</span></h3>
-        <p class="mt-2 text-muted">References, implementation notes, and technical docs.</p>
-      </a>
-    </div>
+  <section class="mt-[clamp(3.5rem,8vw,6rem)] grid gap-x-12 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="focus-title">
+    <h2 class="label" id="focus-title">Focus</h2>
+    <dl class="border-t border-rule-strong">
+      {
+        focusAreas.map((area) => (
+          <div class="grid gap-x-8 gap-y-1 border-b border-rule py-5 md:grid-cols-[14rem_minmax(0,1fr)]">
+            <dt class="font-semibold">{area.title}</dt>
+            <dd class="max-w-[36rem] text-muted">{area.blurb}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="mt-[clamp(3rem,6vw,4.5rem)] grid gap-x-12 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="elsewhere-title">
+    <h2 class="label" id="elsewhere-title">Elsewhere</h2>
+    <ul class="border-t border-rule-strong">
+      {
+        elsewhere.map((item) => (
+          <li class="grid gap-x-8 gap-y-1 border-b border-rule py-5 md:grid-cols-[14rem_minmax(0,1fr)]">
+            <a class="font-semibold" href={item.href} target="_blank" rel="noopener noreferrer">
+              {item.label} <span aria-hidden="true">↗</span>
+            </a>
+            <p class="max-w-[36rem] text-muted">{item.blurb}</p>
+          </li>
+        ))
+      }
+    </ul>
   </section>
 </Layout>
-
-<style>
-  /* Decorative panel: a layered accent-tinted gradient over the surface, with a
-     masked grid overlay. Kept as CSS — multi-layer backgrounds + mask-image do
-     not translate cleanly to utility classes. */
-  .panel {
-    background:
-      linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 11%, transparent), transparent 42%),
-      var(--color-surface);
-  }
-
-  .panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--color-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
-    background-size: 28px 28px;
-    mask-image: linear-gradient(160deg, black, transparent 70%);
-    pointer-events: none;
-  }
-</style>

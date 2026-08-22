@@ -4,26 +4,24 @@ import { site } from '../config/site';
 ---
 
 <Layout title="Resume" description={`Resume — ${site.name}`}>
-  <section>
-    <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-[clamp(1.8rem,5vw,2.4rem)]">Resume</h1>
-      <a class="button" href={site.links.resumePdf} target="_blank" rel="noopener noreferrer">
-        Download PDF <span aria-hidden="true">↓</span>
-      </a>
-    </header>
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <h1 class="font-display text-[clamp(2.5rem,6vw,4rem)] font-bold uppercase leading-[0.95]">Resume</h1>
+    <a class="button" href={site.links.resumePdf} target="_blank" rel="noopener noreferrer">
+      Download PDF <span aria-hidden="true">↓</span>
+    </a>
+  </header>
 
-    <object
-      class="h-[min(80vh,1100px)] w-full rounded-lg border border-border bg-surface shadow-soft"
-      data={site.links.resumePdf}
-      type="application/pdf"
-      aria-label={`${site.name} resume`}
-    >
-      <div class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-muted">
-        <p>This browser can't display the embedded PDF.</p>
-        <a class="button" href={site.links.resumePdf} target="_blank" rel="noopener noreferrer">
-          Open the PDF <span aria-hidden="true">↗</span>
-        </a>
-      </div>
-    </object>
-  </section>
+  <object
+    class="mt-8 h-[min(80vh,1100px)] w-full border border-rule bg-surface"
+    data={site.links.resumePdf}
+    type="application/pdf"
+    aria-label={`${site.name} resume`}
+  >
+    <div class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-muted">
+      <p>This browser can't display the embedded PDF.</p>
+      <a class="button" href={site.links.resumePdf} target="_blank" rel="noopener noreferrer">
+        Open the PDF <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </object>
 </Layout>

@@ -1,16 +1,24 @@
 ---
-import { site } from '../config/site';
+import { site, socials } from '../config/site';
 
 const year = new Date().getFullYear();
 ---
 
-<footer class="border-t border-border text-[0.9rem] text-muted">
-  <div class="mx-auto flex w-full max-w-[68rem] flex-wrap items-center justify-between gap-3 px-5 py-6">
+<footer class="border-t border-rule">
+  <div
+    class="mx-auto flex w-full max-w-[64rem] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 px-6 py-6 font-mono text-[0.75rem] uppercase tracking-[0.1em] text-muted"
+  >
     <p>© {year} {site.name}</p>
-    <nav class="flex flex-wrap gap-4" aria-label="Footer">
-      <a class="text-muted hover:text-text" href={site.links.blog} target="_blank" rel="noopener noreferrer">Blog</a>
-      <a class="text-muted hover:text-text" href={site.links.notes} target="_blank" rel="noopener noreferrer">Notes</a>
-      <a class="text-muted hover:text-text" href={site.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+    <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
+      <a class="no-underline hover:text-text" href={site.links.blog} target="_blank" rel="noopener noreferrer">Blog</a>
+      <a class="no-underline hover:text-text" href={site.links.notes} target="_blank" rel="noopener noreferrer">Notes</a>
+      {
+        socials.map((s) => (
+          <a class="no-underline hover:text-text" href={s.href} target="_blank" rel="noopener noreferrer">
+            {s.label}
+          </a>
+        ))
+      }
     </nav>
   </div>
 </footer>

@@ -1,103 +1,110 @@
 @import 'tailwindcss';
 
+@import '@fontsource/ibm-plex-sans-condensed/latin-700.css';
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+
 /* Design tokens. Registering them under @theme makes Tailwind generate matching
-   utilities (bg-surface, text-muted, border-border, shadow-soft, font-mono, …). */
+   utilities (bg-surface, text-muted, border-rule, font-display, …). */
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas,
-    'DejaVu Sans Mono', monospace;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'IBM Plex Sans Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
 
-  --color-bg: #f7f7f4;
-  --color-surface: #ffffff;
-  --color-text: #171717;
-  --color-muted: #62635f;
-  --color-border: #dfdfd8;
-  --color-border-strong: #c7c8bd;
-  --color-grid: color-mix(in srgb, var(--color-border) 70%, transparent);
-  --color-accent: #0f766e;
+  --color-bg: #eceef1;
+  --color-surface: #f6f7f9;
+  --color-text: #15181c;
+  --color-muted: #5c636b;
+  --color-rule: #c5cad1;
+  --color-rule-strong: #8d949c;
+  --color-accent: #b3261e;
   --color-accent-contrast: #ffffff;
-
-  --shadow-soft: 0 1px 2px rgb(23 23 23 / 0.04), 0 16px 40px rgb(23 23 23 / 0.06);
-  --shadow-lift: 0 2px 6px rgb(23 23 23 / 0.07), 0 18px 42px rgb(23 23 23 / 0.1);
 }
 
-/* Dark theme overrides the token values; every Tailwind color utility resolves
-   to var(--color-*), so the whole UI adapts without dark: variants. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #10110f;
-    --color-surface: #171916;
-    --color-text: #f1f1eb;
-    --color-muted: #adafa6;
-    --color-border: #2d302a;
-    --color-border-strong: #42463d;
-    --color-accent: #5eead4;
-    --color-accent-contrast: #082f2d;
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.16), 0 18px 48px rgb(0 0 0 / 0.22);
-    --shadow-lift: 0 2px 8px rgb(0 0 0 / 0.2), 0 22px 54px rgb(0 0 0 / 0.3);
+    --color-bg: #15181b;
+    --color-surface: #1c2024;
+    --color-text: #e6e8eb;
+    --color-muted: #9aa2aa;
+    --color-rule: #2f353b;
+    --color-rule-strong: #4d555e;
+    --color-accent: #f0685c;
+    --color-accent-contrast: #1a0907;
   }
 }
 
 @layer base {
   html {
-    scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    background: var(--color-bg);
   }
 
-  /* Faint vertical rule echoing the layout grid; adapts via --color-grid. */
   body {
-    background:
-      linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), var(--color-grid) calc(100% - 1px)) 0 0 / min(9vw, 7rem) 100%,
-      var(--color-bg);
+    font-feature-settings: 'ss02', 'cv01';
   }
 
   h1,
   h2,
   h3 {
-    line-height: 1.2;
-    font-weight: 700;
-    letter-spacing: 0;
+    line-height: 1.1;
+    font-weight: 600;
   }
 
   a {
-    color: var(--color-accent);
-    text-decoration: none;
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--color-rule-strong);
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
   }
 
   a:hover {
-    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   :focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: 4px;
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition: none !important;
+    }
   }
 }
 
 @layer components {
-  /* Shared button, reused across pages via class="button". */
+  /* Mono eyebrow used for section names and spec-sheet keys. */
+  .label {
+    @apply font-mono text-[0.75rem] font-medium uppercase tracking-[0.12em] text-muted;
+  }
+
   .button {
-    @apply inline-flex items-center gap-[0.4em] rounded-lg border border-transparent
-      bg-accent px-[1.1rem] py-[0.6rem] font-[650] text-accent-contrast
-      transition duration-150;
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.24) inset;
+    @apply inline-flex items-center gap-[0.45em] rounded-[3px] border border-text bg-text
+      px-[1.1rem] py-[0.6rem] font-medium text-bg no-underline transition-colors duration-150;
   }
 
   .button:hover {
-    @apply -translate-y-px no-underline brightness-[1.08];
+    @apply border-accent bg-accent text-accent-contrast;
   }
 
   .button--ghost {
-    @apply border-border bg-surface/85 text-text;
+    @apply border-rule-strong bg-transparent text-text;
   }
 
   .button--ghost:hover {
-    @apply bg-surface;
-  }
-
-  .button:disabled {
-    @apply cursor-wait opacity-65;
+    @apply border-accent bg-transparent text-accent;
   }
 }

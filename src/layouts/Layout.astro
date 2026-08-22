@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import Sidebar from '../components/Sidebar.astro';
+import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { site } from '../config/site';
 
@@ -27,8 +27,8 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     <meta name="description" content={description} />
     {canonical && <link rel="canonical" href={canonical} />}
 
-    <meta name="theme-color" content="#f7f7f4" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#10110f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15181b" media="(prefers-color-scheme: dark)" />
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
@@ -36,13 +36,11 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     {canonical && <meta property="og:url" content={canonical} />}
     <meta name="twitter:card" content="summary" />
   </head>
-  <body class="flex min-h-[100dvh] max-[820px]:flex-col font-sans text-text leading-[1.6] antialiased">
-    <Sidebar />
-    <div class="flex flex-auto min-w-0 flex-col">
-      <main class="flex-[1_0_auto] w-full max-w-[68rem] mx-auto px-6 py-[clamp(2.25rem,5vw,5rem)]">
-        <slot />
-      </main>
-      <Footer />
-    </div>
+  <body class="flex min-h-[100dvh] flex-col bg-bg font-sans text-[1.0625rem] leading-[1.6] text-text antialiased">
+    <Header />
+    <main class="mx-auto w-full max-w-[64rem] flex-auto px-6 py-[clamp(2.5rem,6vw,5.5rem)]">
+      <slot />
+    </main>
+    <Footer />
   </body>
 </html>
