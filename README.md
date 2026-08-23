@@ -10,7 +10,7 @@ share infrastructure owned by this repo.
 ## Requirements
 
 - Node.js ≥ 22.12 (`engines` in `package.json`)
-- AWS CLI + CDK bootstrap in `us-east-1` for infra work
+- AWS CLI + CDK bootstrap in `us-west-2` and `us-east-1` for infra work
 
 ## Develop
 
@@ -37,8 +37,10 @@ src/
 public/         static assets (resume PDF, favicon)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
-  lib/shared-stack.ts   account-wide singletons
-  lib/site-stack.ts     one environment
+  lib/shared-stack.ts   account-wide singletons (us-west-2)
+  lib/edge-stack.ts     shared WAF (us-east-1)
+  lib/cert-stack.ts     per-env ACM certificate (us-east-1)
+  lib/site-stack.ts     one environment (us-west-2)
   lib/site-config.ts    SITE_ENVS, account/region/zone
 .github/workflows/
   deploy.yml    build + publish content
@@ -57,19 +59,29 @@ flowchart LR
   CF -. /api/contact<br/>parked off .-> API[HTTP API + Lambda + DynamoDB]
 ```
 
-Everything runs in `us-east-1` under the `rickgwaterman.com` hosted zone. The CDK app
-(`infra/`) synthesizes one shared stack plus one stack per environment.
+The home region is `us-west-2`; everything that can live there does (buckets,
+distributions, roles, SSM). CloudFront requires its ACM certificate and a
+`CLOUDFRONT`-scoped WAF WebACL in `us-east-1`, so those sit in thin edge stacks and are
+passed to the home-region stacks with CDK `crossRegionReferences`. DNS is the
+`rickgwaterman.com` hosted zone.
 
-### `WebsiteShared` — account-wide singletons
+| Stack | Region | Contents |
+| --- | --- | --- |
+| `WebsiteEdge` | us-east-1 | Shared CloudFront WebACL |
+| `WebsiteCert<Env>` | us-east-1 | That environment's DNS-validated ACM certificate |
+| `WebsiteShared` | us-west-2 | OIDC provider, `website-infra-deploy` role, SSM param with the WebACL ARN |
+| `WebsiteSite<Env>` | us-west-2 | Bucket, distribution, DNS, content role, SSM params |
+
+### `WebsiteShared` / `WebsiteEdge` — account-wide singletons
 
 Created once and consumed by this repo **and** by `blog` and `notes` (separate CDK apps):
 
 | Resource | Purpose |
 | --- | --- |
 | GitHub OIDC provider | One per account; all three repos' workflows authenticate through it |
-| `website-infra-deploy` role | Assumed by `infra.yml` from `develop`; can only assume the CDK bootstrap roles |
-| Shared CloudFront WebACL | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group |
-| SSM `/website/shared/cloudfront-webacl-arn` | How blog/notes discover the WebACL at deploy time |
+| `website-infra-deploy` role | Assumed by `infra.yml` from `develop`; can only assume the CDK bootstrap roles in both regions |
+| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group |
+| SSM `/website/shared/cloudfront-webacl-arn` (us-west-2) | How blog/notes discover the WebACL at deploy time |
 
 ### `WebsiteSite<Env>` — one static-site environment
 
@@ -80,8 +92,8 @@ Created once and consumed by this repo **and** by `blog` and `notes` (separate C
 
 Each environment stack creates: a private, encrypted S3 bucket (prod: `RETAIN`, dev:
 destroy + auto-empty); a CloudFront distribution with Origin Access Control and a
-viewer-request CloudFront Function (directory-index rewrite, `www` redirect on prod); a
-DNS-validated ACM certificate; Route53 A/AAAA alias records; a branch-scoped OIDC role
+viewer-request CloudFront Function (directory-index rewrite, `www` redirect on prod);
+Route53 A/AAAA alias records; a branch-scoped OIDC role
 that may only write to that environment's bucket and invalidate its distribution; and
 SSM parameters `/website/<env>/bucket-name` and `/website/<env>/distribution-id` that the
 deploy workflow resolves at run time, so nothing is hardcoded in CI.
@@ -110,10 +122,11 @@ Branching follows git flow: feature branches → `develop` (dev), releases → `
 ### First-time / local infra deploy
 
 `website-infra-deploy` is created by `WebsiteShared`, so the very first deploy runs
-locally with admin credentials:
+locally with admin credentials. Both regions must be CDK-bootstrapped:
 
 ```sh
 cd infra && npm ci
+npx cdk bootstrap aws://<account>/us-west-2 aws://<account>/us-east-1
 AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> npx cdk deploy --all --require-approval never
 ```
 
