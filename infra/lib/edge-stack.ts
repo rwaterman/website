@@ -6,15 +6,10 @@ import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 const BLOCKED_COUNTRY_CODES = ['CU', 'IR', 'KP', 'SY', 'RU', 'BY'];
 
 /**
- * Edge-region (us-east-1) singletons. A CLOUDFRONT-scoped WebACL can only be created in
- * us-east-1, so it lives here rather than in the home-region SharedStack, which publishes
- * its ARN to SSM for the sibling blog/notes repos.
- *
- * One shared WebACL — a "blanket" for the apex and every subdomain. A single
- * CLOUDFRONT-scoped WebACL can be associated with many distributions, so website, blog,
- * and notes all point their distributions at this one ARN instead of each defining their
- * own. Rules: a sanctioned-country geo block, a site-wide per-IP rate limit, and the AWS
- * IP-reputation managed group.
+ * One shared CLOUDFRONT-scoped WebACL (us-east-1 only) — a "blanket" for the apex and every
+ * subdomain. Website, blog, and notes all point their distributions at this one ARN instead
+ * of each defining their own. Rules: a sanctioned-country geo block, a site-wide per-IP
+ * rate limit, and the AWS IP-reputation managed group.
  */
 export class EdgeStack extends cdk.Stack {
   public readonly webAclArn: string;

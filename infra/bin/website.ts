@@ -9,8 +9,6 @@ const app = new cdk.App();
 const env = { account: ACCOUNT, region: REGION };
 const edgeEnv = { account: ACCOUNT, region: EDGE_REGION };
 
-// Certificates and the WAF must be in us-east-1; everything else lives in the home region.
-// crossRegionReferences lets the home-region stacks consume the edge-region ARNs.
 const edge = new EdgeStack(app, 'WebsiteEdge', { env: edgeEnv, crossRegionReferences: true });
 
 const shared = new SharedStack(app, 'WebsiteShared', {

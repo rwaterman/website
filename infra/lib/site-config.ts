@@ -7,12 +7,8 @@ function requireEnv(name: string): string {
 }
 
 export const ACCOUNT = process.env.CDK_DEFAULT_ACCOUNT ?? requireEnv('AWS_ACCOUNT_ID');
-/** Home region for everything that can live there: buckets, distributions, roles, SSM. */
 export const REGION = 'us-west-2';
-/**
- * CloudFront-mandated region: ACM certificates used by CloudFront and CLOUDFRONT-scoped
- * WAF WebACLs can only be created in us-east-1.
- */
+// CloudFront certificates and WAF must live in us-east-1.
 export const EDGE_REGION = 'us-east-1';
 
 export const HOSTED_ZONE_ID = requireEnv('HOSTED_ZONE_ID');

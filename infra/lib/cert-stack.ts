@@ -8,11 +8,7 @@ export interface CertStackProps extends cdk.StackProps {
   site: SiteEnv;
 }
 
-/**
- * CloudFront only accepts ACM certificates issued in us-east-1, so each environment's
- * certificate lives in this thin edge-region stack and is handed to the site stack in the
- * home region via CDK cross-region references.
- */
+/** One environment's CloudFront certificate (us-east-1). */
 export class CertStack extends cdk.Stack {
   public readonly certificate: acm.ICertificate;
 
@@ -25,12 +21,18 @@ export class CertStack extends cdk.Stack {
       zoneName: ZONE_NAME,
     });
 
-    this.certificate = new acm.Certificate(this, 'Certificate', {
+    // Keyed on the domain: a domain change must produce a new cross-region export, because
+    // CDK's export writer never rewrites an existing export's value. RETAIN because the
+    // distribution still references the old certificate during this stack's cleanup;
+    // delete the orphan by hand afterwards.
+    const certificate = new acm.Certificate(this, `Certificate ${site.domainName}`, {
       domainName: site.domainName,
       subjectAlternativeNames: site.includeWww ? [`www.${ZONE_NAME}`] : undefined,
       validation: acm.CertificateValidation.fromDns(zone),
     });
+    certificate.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+    this.certificate = certificate;
 
-    new cdk.CfnOutput(this, 'CertificateArn', { value: this.certificate.certificateArn });
+    new cdk.CfnOutput(this, 'CertificateArn', { value: certificate.certificateArn });
   }
 }
