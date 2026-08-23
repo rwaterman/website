@@ -42,7 +42,7 @@ export const SITE_ENVS: SiteEnv[] = [
     id: 'Prod',
     envName: 'prod',
     domainName: ZONE_NAME,
-    branch: 'develop',
+    branch: 'main',
     includeWww: true,
     enableContactForm: false,
   },

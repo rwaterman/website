@@ -2,7 +2,7 @@ name: Deploy site
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
     inputs:
       env:
@@ -39,6 +39,8 @@ jobs:
         run: |
           if [ -n "$REQUESTED_ENV" ]; then
             TARGET_ENV="$REQUESTED_ENV"
+          elif [ "$REF_NAME" = "main" ]; then
+            TARGET_ENV="prod"
           else
             TARGET_ENV="dev"
           fi
