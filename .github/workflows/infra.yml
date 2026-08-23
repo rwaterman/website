@@ -15,7 +15,7 @@ permissions:
 env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   HOSTED_ZONE_ID: ${{ secrets.HOSTED_ZONE_ID }}
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
 
 jobs:
   cdk-deploy:

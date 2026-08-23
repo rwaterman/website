@@ -18,19 +18,20 @@ import { HOSTED_ZONE_ID, ZONE_NAME, GITHUB_REPO, SiteEnv } from './site-config';
 export interface SiteStackProps extends cdk.StackProps {
   site: SiteEnv;
   oidcProvider: iam.IOpenIdConnectProvider;
-  /** ARN of the shared account-wide CloudFront WebACL, owned by SharedStack. */
+  /** ARN of the shared account-wide CloudFront WebACL, owned by EdgeStack. */
   webAclArn: string;
+  certificate: acm.ICertificate;
 }
 
 /**
  * One static-site environment: private S3 bucket behind a CloudFront distribution
- * (Origin Access Control), an in-region ACM certificate, Route53 alias records, a
- * directory-index CloudFront Function, and a branch-scoped OIDC role for content deploys.
+ * (Origin Access Control), Route53 alias records, a directory-index CloudFront Function,
+ * and a branch-scoped OIDC role for content deploys.
  */
 export class SiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
-    const { site, oidcProvider, webAclArn } = props;
+    const { site, oidcProvider, webAclArn, certificate } = props;
     const isProd = site.envName === 'prod';
     const wwwDomain = `www.${ZONE_NAME}`;
 
@@ -40,12 +41,6 @@ export class SiteStack extends cdk.Stack {
     });
 
     const domainNames = site.includeWww ? [site.domainName, wwwDomain] : [site.domainName];
-
-    const certificate = new acm.Certificate(this, 'Certificate', {
-      domainName: site.domainName,
-      subjectAlternativeNames: site.includeWww ? [wwwDomain] : undefined,
-      validation: acm.CertificateValidation.fromDns(zone),
-    });
 
     const bucket = new s3.Bucket(this, 'SiteBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,

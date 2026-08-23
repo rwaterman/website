@@ -7,7 +7,9 @@ function requireEnv(name: string): string {
 }
 
 export const ACCOUNT = process.env.CDK_DEFAULT_ACCOUNT ?? requireEnv('AWS_ACCOUNT_ID');
-export const REGION = 'us-east-1';
+export const REGION = 'us-west-2';
+// CloudFront certificates and WAF must live in us-east-1.
+export const EDGE_REGION = 'us-east-1';
 
 export const HOSTED_ZONE_ID = requireEnv('HOSTED_ZONE_ID');
 export const ZONE_NAME = 'rickgwaterman.com';
