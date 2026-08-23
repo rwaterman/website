@@ -1,6 +1,6 @@
 # website
 
-Source for [rickgwaterman.com](https://rickgwaterman.com) — Rick Waterman's personal site.
+Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
 A small static site (home, links, resume, 404) built with [Astro](https://astro.build/) and
 Tailwind CSS, deployed to S3 + CloudFront with AWS CDK. It is the hub for the sibling
 [`blog`](https://github.com/rwaterman/blog) (Hugo) and
@@ -21,7 +21,7 @@ npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 ```
 
-`SITE` (e.g. `https://dev.rickgwaterman.com`) is read at build time for canonical URLs,
+`SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs,
 the sitemap, and to point the blog/notes nav links at the matching dev subdomains.
 Site identity, nav, and social links live in `src/config/site.ts`.
 
@@ -63,7 +63,7 @@ The home region is `us-west-2`; everything that can live there does (buckets,
 distributions, roles, SSM). CloudFront requires its ACM certificate and a
 `CLOUDFRONT`-scoped WAF WebACL in `us-east-1`, so those sit in thin edge stacks and are
 passed to the home-region stacks with CDK `crossRegionReferences`. DNS is the
-`rickgwaterman.com` hosted zone.
+`rickwaterman.com` hosted zone.
 
 | Stack | Region | Contents |
 | --- | --- | --- |
@@ -87,8 +87,8 @@ Created once and consumed by this repo **and** by `blog` and `notes` (separate C
 
 | Env | Stack | Domain | Deploys from | Content role |
 | --- | --- | --- | --- | --- |
-| dev | `WebsiteSiteDev` | `dev.rickgwaterman.com` | `develop` | `website-content-dev` |
-| prod | `WebsiteSiteProd` | `rickgwaterman.com` (+ `www` → apex 301) | `main` | `website-content-prod` |
+| dev | `WebsiteSiteDev` | `dev.rickwaterman.com` | `develop` | `website-content-dev` |
+| prod | `WebsiteSiteProd` | `rickwaterman.com` (+ `www` → apex 301) | `main` | `website-content-prod` |
 
 Each environment stack creates: a private, encrypted S3 bucket (prod: `RETAIN`, dev:
 destroy + auto-empty); a CloudFront distribution with Origin Access Control and a

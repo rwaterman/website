@@ -48,11 +48,11 @@ jobs:
           case "$TARGET_ENV" in
             prod)
               echo "name=prod" >> "$GITHUB_OUTPUT"
-              echo "site=https://rickgwaterman.com" >> "$GITHUB_OUTPUT"
+              echo "site=https://rickwaterman.com" >> "$GITHUB_OUTPUT"
               ;;
             dev)
               echo "name=dev" >> "$GITHUB_OUTPUT"
-              echo "site=https://dev.rickgwaterman.com" >> "$GITHUB_OUTPUT"
+              echo "site=https://dev.rickwaterman.com" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unsupported environment: $TARGET_ENV" >&2
