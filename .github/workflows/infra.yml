@@ -15,15 +15,15 @@ permissions:
 env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   HOSTED_ZONE_ID: ${{ secrets.HOSTED_ZONE_ID }}
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
 
 jobs:
   cdk-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm

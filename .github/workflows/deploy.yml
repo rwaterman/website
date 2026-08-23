@@ -23,13 +23,13 @@ permissions:
 
 env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Resolve environment
         id: target
@@ -48,11 +48,11 @@ jobs:
           case "$TARGET_ENV" in
             prod)
               echo "name=prod" >> "$GITHUB_OUTPUT"
-              echo "site=https://rickgwaterman.com" >> "$GITHUB_OUTPUT"
+              echo "site=https://rickwaterman.com" >> "$GITHUB_OUTPUT"
               ;;
             dev)
               echo "name=dev" >> "$GITHUB_OUTPUT"
-              echo "site=https://dev.rickgwaterman.com" >> "$GITHUB_OUTPUT"
+              echo "site=https://dev.rickwaterman.com" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unsupported environment: $TARGET_ENV" >&2
@@ -60,7 +60,7 @@ jobs:
               ;;
           esac
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
