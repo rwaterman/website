@@ -5,6 +5,9 @@ import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ACCOUNT, REGION, GITHUB_REPO } from './site-config';
 
+// US comprehensively sanctioned jurisdictions (OFAC: CU, IR, KP, SY) plus RU and BY.
+const BLOCKED_COUNTRY_CODES = ['CU', 'IR', 'KP', 'SY', 'RU', 'BY'];
+
 /**
  * Account-global singletons shared by every environment (and by the sibling blog/notes
  * repos, which import these by ARN):
@@ -47,7 +50,8 @@ export class SharedStack extends cdk.Stack {
     // One shared CloudFront WebACL — a "blanket" for the apex and every subdomain. A single
     // CLOUDFRONT-scoped WebACL can be associated with many distributions, so website, blog,
     // and notes all point their distributions at this one ARN instead of each defining their
-    // own. Rules: a site-wide per-IP rate limit and the AWS IP-reputation managed group.
+    // own. Rules: a sanctioned-country geo block, a site-wide per-IP rate limit, and the AWS
+    // IP-reputation managed group.
     const webAcl = new wafv2.CfnWebACL(this, 'SharedSiteWebAcl', {
       defaultAction: { allow: {} },
       scope: 'CLOUDFRONT',
@@ -58,8 +62,21 @@ export class SharedStack extends cdk.Stack {
       },
       rules: [
         {
-          name: 'SiteWideRateLimit',
+          name: 'BlockSanctionedCountries',
           priority: 0,
+          action: { block: {} },
+          statement: {
+            geoMatchStatement: { countryCodes: BLOCKED_COUNTRY_CODES },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'shared-geo-block',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: 'SiteWideRateLimit',
+          priority: 1,
           action: { block: {} },
           statement: {
             rateBasedStatement: {
@@ -76,7 +93,7 @@ export class SharedStack extends cdk.Stack {
         },
         {
           name: 'AmazonIpReputationList',
-          priority: 1,
+          priority: 2,
           overrideAction: { none: {} },
           statement: {
             managedRuleGroupStatement: {
