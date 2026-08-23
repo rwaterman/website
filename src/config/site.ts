@@ -2,7 +2,7 @@
  * Single source of truth for site identity, navigation, and cross-site links.
  *
  * The Blog (Hugo) and Notes (Quartz) live in separate repos and are
- * served from subdomains of rickgwaterman.com. Dev website deploys should link
+ * served from subdomains of rickwaterman.com. Dev website deploys should link
  * to the matching dev subdomains so preview traffic stays within dev.
  */
 
@@ -18,10 +18,10 @@ export interface SocialLink {
   href: string;
 }
 
-const isDevDeploy = process.env.SITE === 'https://dev.rickgwaterman.com';
+const isDevDeploy = process.env.SITE === 'https://dev.rickwaterman.com';
 const externalLinks = {
-  blog: `https://blog${isDevDeploy ? '-dev' : ''}.rickgwaterman.com`,
-  notes: `https://notes${isDevDeploy ? '-dev' : ''}.rickgwaterman.com`,
+  blog: `https://blog${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
+  notes: `https://notes${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
 };
 
 export const site = {

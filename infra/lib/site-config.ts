@@ -12,7 +12,7 @@ export const REGION = 'us-west-2';
 export const EDGE_REGION = 'us-east-1';
 
 export const HOSTED_ZONE_ID = requireEnv('HOSTED_ZONE_ID');
-export const ZONE_NAME = 'rickgwaterman.com';
+export const ZONE_NAME = 'rickwaterman.com';
 
 export const GITHUB_REPO = 'rwaterman/website';
 
@@ -21,7 +21,7 @@ export interface SiteEnv {
   id: string;
   /** Lowercase environment key used in role names and SSM paths, e.g. "dev". */
   envName: string;
-  /** Primary domain served, e.g. "dev.rickgwaterman.com". */
+  /** Primary domain served, e.g. "dev.rickwaterman.com". */
   domainName: string;
   /** Git branch whose pushes deploy this environment. */
   branch: string;
@@ -35,7 +35,7 @@ export const SITE_ENVS: SiteEnv[] = [
   {
     id: 'Dev',
     envName: 'dev',
-    domainName: 'dev.rickgwaterman.com',
+    domainName: 'dev.rickwaterman.com',
     branch: 'develop',
     includeWww: false,
     enableContactForm: false,
