@@ -27,6 +27,9 @@ npm run preview    # serve ./dist locally
 the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
 the dev deploy and local `npm run dev` (no `SITE`) link to `blog-dev` / `notes-dev`.
 Site identity, nav, external links, music profiles, and playlists live in `src/config/site.ts`.
+Time-based text is derived, not typed: "N+ years" comes from `careerStartYear` there, and the
+copyright year (`src/components/Year.astro`) is rendered at build time and corrected in the
+browser. Only the legal page's "Last updated" date is set by hand, when its text changes.
 
 ## Content
 

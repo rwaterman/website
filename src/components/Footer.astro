@@ -1,14 +1,13 @@
 ---
+import Year from './Year.astro';
 import { site } from '../config/site';
-
-const year = new Date().getFullYear();
 ---
 
 <footer class="border-t border-rule">
   <div
     class="container-site flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 py-6 font-mono text-[0.75rem] uppercase tracking-[0.1em] text-muted"
   >
-    <p>© {year} {site.name}</p>
+    <p>© <Year /> {site.name}</p>
     <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
       <a class="no-underline hover:text-text" href={site.links.legal}>Legal</a>
       <a class="no-underline hover:text-text" href="/links">Links</a>

@@ -37,14 +37,17 @@ const externalLinks = {
   notes: `https://notes${isProdDeploy ? '' : '-dev'}.rickwaterman.com`,
 };
 
+/** First year of professional backend work; "N+ years" everywhere derives from it. */
+const careerStartYear = 2016;
+const experience = `${new Date().getFullYear() - careerStartYear}+ years`;
+
 export const site = {
   name: 'Rick Waterman',
   role: 'Cloud Solutions Architect & Engineer',
   /** Used for <title>, meta description, and Open Graph tags. */
-  description:
-    'Rick Waterman — Cloud Solutions Architect & Engineer. 10+ years building backend and cloud systems, focused on AWS serverless architecture and data platforms.',
-  intro:
-    'I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. Ten-plus years across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.',
+  description: `Rick Waterman — Cloud Solutions Architect & Engineer. ${experience} building backend and cloud systems, focused on AWS serverless architecture and data platforms.`,
+  intro: `I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. ${experience} across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.`,
+  experience,
   links: {
     github: 'https://github.com/rwaterman',
     blog: externalLinks.blog,

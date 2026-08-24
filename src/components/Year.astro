@@ -1,0 +1,9 @@
+---
+/** Current year — rendered at build time, then corrected in the browser so a rollover does not need a redeploy. */
+const year = new Date().getFullYear();
+---
+
+<span data-year>{year}</span>
+<script>
+  for (const el of document.querySelectorAll('[data-year]')) el.textContent = String(new Date().getFullYear());
+</script>
