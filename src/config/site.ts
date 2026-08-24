@@ -27,10 +27,12 @@ export interface Playlist {
   service: string;
 }
 
-const isDevDeploy = process.env.SITE === 'https://dev.rickwaterman.com';
+// Only the explicit prod SITE links to the prod blog/notes; the dev deploy and local
+// `astro dev` / `astro build` (no SITE) point at the -dev subdomains.
+const isProdDeploy = process.env.SITE === 'https://rickwaterman.com';
 const externalLinks = {
-  blog: `https://blog${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
-  notes: `https://notes${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
+  blog: `https://blog${isProdDeploy ? '' : '-dev'}.rickwaterman.com`,
+  notes: `https://notes${isProdDeploy ? '' : '-dev'}.rickwaterman.com`,
 };
 
 export const site = {

@@ -23,8 +23,9 @@ npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 ```
 
-`SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs,
-the sitemap, and to point the blog/notes nav links at the matching dev subdomains.
+`SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
+the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
+the dev deploy and local `npm run dev` (no `SITE`) link to `blog-dev` / `notes-dev`.
 Site identity, nav, external links, and playlists live in `src/config/site.ts`.
 
 ## Content
