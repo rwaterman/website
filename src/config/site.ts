@@ -18,6 +18,8 @@ export interface NavLink {
 export interface SocialLink {
   label: string;
   href: string;
+  /** One-line description, shown wherever the link is listed with context. */
+  blurb?: string;
 }
 
 export interface Playlist {
@@ -59,7 +61,6 @@ export const site = {
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
   { label: 'Resume', href: site.links.resume },
-  { label: 'Links', href: '/links' },
   {
     label: 'Notes',
     href: site.links.notes,
@@ -72,10 +73,18 @@ export const nav: NavLink[] = [
     external: true,
     blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
   },
+  { label: 'Links', href: '/links' },
 ];
 
 export const socials: SocialLink[] = [
   { label: 'GitHub', href: site.links.github },
+];
+
+/** Music profiles listed on /links. */
+export const music: SocialLink[] = [
+  { label: 'Apple Music', href: 'https://music.apple.com/profile/rickwaterman', blurb: 'Library, playlists, and what is on repeat.' },
+  { label: 'Spotify', href: 'https://open.spotify.com/user/1219581587', blurb: 'Public playlists.' },
+  { label: 'SoundCloud', href: 'https://soundcloud.com/kovyeej', blurb: 'Mixes, finds, and the occasional upload.' },
 ];
 
 /** Music playlists listed on /fun. Empty until links are added. */

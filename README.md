@@ -26,7 +26,7 @@ npm run preview    # serve ./dist locally
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
 the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
 the dev deploy and local `npm run dev` (no `SITE`) link to `blog-dev` / `notes-dev`.
-Site identity, nav, external links, and playlists live in `src/config/site.ts`.
+Site identity, nav, external links, music profiles, and playlists live in `src/config/site.ts`.
 
 ## Content
 

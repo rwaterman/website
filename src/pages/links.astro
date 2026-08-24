@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
-import { site, nav, socials } from '../config/site';
+import { site, nav, socials, music } from '../config/site';
 import { parseOpml, type FeedGroup } from '../lib/opml';
 import { slugify } from '../lib/slug';
 import opml from '../../public/feeds.opml?raw';
@@ -9,6 +9,7 @@ import opml from '../../public/feeds.opml?raw';
 const linkSections = [
   { title: 'Sites', links: nav.filter((link) => link.external) },
   { title: 'Social', links: socials },
+  { title: 'Music', links: music },
 ];
 const host = (href: string): string => new URL(href).host;
 
@@ -25,7 +26,7 @@ const feedGroups = [mine, ...parseOpml(opml)];
 <Layout background="flow"
   heading="Links"
   description={`All of ${site.name}'s links in one place`}
-  lede="Everywhere else you can find me, and what I read."
+  lede="Everywhere else you can find me, what I listen to, and what I read."
 >
   <a slot="aside" class="button button--ghost" href="/feeds.opml" download="rick-waterman-feeds.opml">
     Download OPML <span aria-hidden="true">↓</span>
