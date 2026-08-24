@@ -57,7 +57,6 @@ export const site = {
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
   { label: 'Resume', href: site.links.resume },
-  { label: 'Software', href: '/software' },
   {
     label: 'Notes',
     href: site.links.notes,
@@ -77,35 +76,6 @@ export const nav: NavLink[] = [
 export const socials: SocialLink[] = [
   { label: 'GitHub', href: site.links.github },
 ];
-
-export interface Highlight {
-  /** Repo name under `software.owner`; must be public or the build fails. */
-  name: string;
-  /** Replaces the GitHub description. */
-  blurb: string;
-}
-
-/**
- * GitHub repos listed on /software. Fetched at build time; see src/lib/github.ts.
- * `highlights` are curated (mirrors the "Around here" list in github.com/rwaterman/rwaterman)
- * and shown first as cards; every other public repo follows, most recently pushed first.
- */
-export const software = {
-  owner: 'rwaterman',
-  highlights: [
-    { name: 'dotfiles', blurb: 'zsh, editor, and AI-agent configs, stowed into $HOME; one CLAUDE.md feeds Claude, Codex, and Copilot.' },
-    { name: 'templates', blurb: 'Copy-and-customize IaC, Dockerfiles, and manifests.' },
-    { name: 'scripts', blurb: 'Standalone operational scripts.' },
-    { name: 'ts-lib-starter', blurb: 'Minimal Node 24+ ESM starter for TypeScript libraries.' },
-    { name: 'deep-object-rename-ts', blurb: 'Dependency-free deep rename of object keys or values, on npm as deep-object-rename.' },
-    { name: 'pendularium', blurb: 'Chaotic double-pendulum generative art in Swift + Metal, painting an HDR image until the machine gives out.' },
-    { name: 'radial-afterburn', blurb: 'Neon tube shooter in Swift + Metal, built almost entirely with AI coding agents.' },
-  ] as Highlight[],
-  /** Shown first among the rest, in this order. */
-  pinned: [] as string[],
-  /** Never shown (the profile README repo, etc.). */
-  hidden: ['rwaterman'],
-};
 
 /** Music playlists listed on /fun. Empty until links are added. */
 export const playlists: Playlist[] = [];

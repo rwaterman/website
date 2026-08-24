@@ -6,13 +6,14 @@ import { playlists } from '../config/site';
 import { shaders } from '../config/shaders';
 import { memes, cats } from '../lib/fun';
 
+// Sections without content are not rendered; drop files or links in and they appear.
 const galleries = [
-  { title: 'Memes', images: memes, empty: 'Curated slowly. Nothing posted yet.' },
-  { title: 'Cat Photos', images: cats, empty: 'The cats have not approved any photos yet.' },
-];
+  { title: 'Memes', images: memes },
+  { title: 'Cat Photos', images: cats },
+].filter((gallery) => gallery.images.length > 0);
 ---
 
-<Layout background="hex" heading="Fun" lede="The non-work shelf — GenAI shaders, memes, cat photos, and what's playing.">
+<Layout background="hex" heading="Fun" lede="The non-work shelf — GenAI shaders first; memes, cat photos, and playlists as they land.">
   <Section title="GenAI Shaders">
     <p class="max-w-[36rem] text-muted">
       {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
@@ -53,24 +54,20 @@ const galleries = [
   {
     galleries.map((gallery) => (
       <Section title={gallery.title}>
-        {gallery.images.length > 0 ? (
-          <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {gallery.images.map((image) => (
-              <li class="tile [--tile-ratio:1]">
-                <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="card card--empty">{gallery.empty}</p>
-        )}
+        <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+          {gallery.images.map((image) => (
+            <li class="tile [--tile-ratio:1]">
+              <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
+            </li>
+          ))}
+        </ul>
       </Section>
     ))
   }
 
-  <Section title="Playlists">
-    {
-      playlists.length > 0 ? (
+  {
+    playlists.length > 0 && (
+      <Section title="Playlists">
         <ul class="rows [--rows-key:9rem]">
           {playlists.map((playlist) => (
             <li>
@@ -81,11 +78,9 @@ const galleries = [
             </li>
           ))}
         </ul>
-      ) : (
-        <p class="card card--empty">Apple Music, Spotify, and SoundCloud links land here.</p>
-      )
-    }
-  </Section>
+      </Section>
+    )
+  }
 
   <div
     data-stage
