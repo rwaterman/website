@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
 import { site } from '../config/site';
 
 const updated = '2026-08-23';
@@ -9,17 +10,15 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
 ---
 
 <Layout
-  title="Legal"
+  heading="Legal"
   description={`AI disclosure, copyright, privacy, and disclaimers for ${site.name}'s sites`}
 >
-  <h1 class="font-display text-[clamp(2.5rem,6vw,4rem)] font-bold uppercase leading-[0.95]">Legal</h1>
-  <p class="mt-3 max-w-[40rem] text-muted">
+  <p class="mt-4 max-w-[40rem] text-lede text-muted">
     AI disclosure, copyright, privacy, and disclaimers for this site, <a href={site.links.blog}>{blogHost}</a>, and
     <a href={site.links.notes}>{notesHost}</a>. Last updated {updated}.
   </p>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="ai-disclosure">
-    <h2 class="label" id="ai-disclosure">AI disclosure</h2>
+  <Section title="AI disclosure">
     <div class="max-w-[40rem] space-y-4">
       <p>
         The writing on these sites reflects my own ideas and opinions. I draft and edit with generative AI assistance —
@@ -37,10 +36,9 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         what changed and when.
       </p>
     </div>
-  </section>
+  </Section>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="copyright">
-    <h2 class="label" id="copyright">Copyright</h2>
+  <Section title="Copyright">
     <div class="max-w-[40rem] space-y-4">
       <p>
         Unless stated otherwise, the content on these sites is © {year} {site.name}. All rights reserved. Short
@@ -51,10 +49,9 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         clipped third-party material belongs to its original authors and is reproduced for reference with attribution.
       </p>
     </div>
-  </section>
+  </Section>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="privacy">
-    <h2 class="label" id="privacy">Privacy</h2>
+  <Section title="Privacy">
     <div class="max-w-[40rem] space-y-4">
       <p>
         These are static sites with no accounts and no forms that accept input. This site and the blog set no cookies
@@ -77,10 +74,9 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         correspondence only as long as needed to respond.
       </p>
     </div>
-  </section>
+  </Section>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="disclaimers">
-    <h2 class="label" id="disclaimers">Disclaimers</h2>
+  <Section title="Disclaimers">
     <div class="max-w-[40rem] space-y-4">
       <p>
         This is a personal site. The views here are my own and do not represent any employer, client, or other
@@ -97,25 +93,23 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         paid content on these sites; if that changes, it will be disclosed where it appears.
       </p>
     </div>
-  </section>
+  </Section>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="contact">
-    <h2 class="label" id="contact">Contact</h2>
+  <Section title="Contact">
     <div class="max-w-[40rem] space-y-4">
       <p>
         For questions about this page, corrections, attribution, or a request to remove material you hold rights to,
         reach me on <a href={site.links.github}>GitHub</a>. I will respond promptly.
       </p>
     </div>
-  </section>
+  </Section>
 
-  <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="changes">
-    <h2 class="label" id="changes">Changes</h2>
+  <Section title="Changes">
     <div class="max-w-[40rem] space-y-4">
       <p>
         This page will change as the sites and the tools behind them change. The date at the top is the last revision;
         the <a href="https://github.com/rwaterman/website">site repository</a> holds the full history.
       </p>
     </div>
-  </section>
+  </Section>
 </Layout>

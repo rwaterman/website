@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+    <head>
+        <title>News Explorer iCloud Feeds</title>
+    </head>
+    <body>
+        <outline text=" Tech News">
+            <outline type="rss" text="Slashdot" title="Slashdot" xmlUrl="http://rss.slashdot.org/Slashdot/slashdot" description="News for nerds, stuff that matters" htmlUrl="https://slashdot.org/"></outline>
+            <outline type="rss" text="Ars Technica" title="Ars Technica" xmlUrl="http://feeds.arstechnica.com/arstechnica/apple/" description="Serving the Technologist since 1998. News, reviews, and analysis." htmlUrl="https://arstechnica.com"></outline>
+            <outline type="rss" text="MacRumors" title="MacRumors" xmlUrl="http://feeds.macrumors.com/MacRumors-All" description="Apple, iPhone, iPad, Mac News and Rumors" htmlUrl="https://www.macrumors.com"></outline>
+            <outline type="rss" text="The Register" title="The Register" xmlUrl="http://www.theregister.co.uk/excerpts.rss" description="Articles from www.theregister.com" htmlUrl="https://www.theregister.com"></outline>
+        </outline>
+        <outline text="Apple">
+        </outline>
+        <outline text="AWS">
+            <outline type="rss" text="AWS Machine Learning Blog" title="AWS Machine Learning Blog" xmlUrl="https://aws.amazon.com/blogs/amazon-ai/feed/" description="Official Machine Learning Blog of Amazon Web Services" htmlUrl="https://aws.amazon.com/blogs/machine-learning/"></outline>
+            <outline type="rss" text="AWS Security Blog" title="AWS Security Blog" xmlUrl="http://blogs.aws.amazon.com/security/blog/feed/recentPosts.rss" description="The latest AWS security, identity, and compliance launches, announcements, and how-to posts." htmlUrl="https://aws.amazon.com/blogs/security/"></outline>
+            <outline type="rss" text="AWS Big Data Blog" title="AWS Big Data Blog" xmlUrl="http://blogs.aws.amazon.com/bigdata/blog/feed/recentPosts.rss" description="Official Big Data Blog of Amazon Web Services" htmlUrl="https://aws.amazon.com/blogs/big-data/"></outline>
+            <outline type="rss" text="AWS Compute Blog" title="AWS Compute Blog" xmlUrl="https://aws.amazon.com/blogs/compute/feed/" description="#AWS | For support, please visit @AWSSupport." htmlUrl="https://aws.amazon.com/blogs/compute/"></outline>
+            <outline type="rss" text="AWS News Blog" title="AWS News Blog" xmlUrl="http://feeds.feedburner.com/AmazonWebServicesBlog" description="Announcements, Updates, and Launches" htmlUrl="https://aws.amazon.com/blogs/aws/"></outline>
+            <outline type="rss" text="AWS DevOps &amp; Developer Productivity Blog" title="AWS DevOps &amp; Developer Productivity Blog" xmlUrl="http://blogs.aws.amazon.com/application-management/blog/feed/recentPosts.rss" description="Just another AWS Brew Blogs site" htmlUrl="https://aws.amazon.com/blogs/devops/"></outline>
+            <outline type="rss" text="Recent Announcements" title="Recent Announcements" xmlUrl="http://aws.amazon.com/rss/whats-new.rss" description="The AWS Cloud platform expands daily. Learn about announcements, launches, news, innovation and more from Amazon Web Services." htmlUrl="https://aws.amazon.com/about-aws/whats-new/recent/"></outline>
+            <outline type="rss" text="AWS Architecture Blog" title="AWS Architecture Blog" xmlUrl="http://www.awsarchitectureblog.com/atom.xml" description="Just another Amazon Web Services site" htmlUrl="https://aws.amazon.com/blogs/architecture/"></outline>
+        </outline>
+        <outline text="Design">
+        </outline>
+        <outline text="e">
+        </outline>
+        <outline text="Gaming">
+        </outline>
+        <outline text="Mainstream News">
+        </outline>
+        <outline text="Tech Bloggers">
+        </outline>
+    </body>
+</opml>

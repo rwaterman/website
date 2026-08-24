@@ -1,0 +1,91 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
+import { playlists } from '../config/site';
+import { shaders } from '../config/shaders';
+import { memes, cats } from '../lib/fun';
+
+const galleries = [
+  { title: 'Memes', images: memes, empty: 'Curated slowly. Nothing posted yet.' },
+  { title: 'Cat Photos', images: cats, empty: 'The cats have not approved any photos yet.' },
+];
+---
+
+<Layout heading="Fun" lede="The non-work shelf — GenAI shaders, memes, cat photos, and what's playing.">
+  <Section title="GenAI Shaders">
+    <p class="max-w-[36rem] text-muted">
+      Fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 — one fullscreen
+      triangle, three uniforms, no libraries. Source under each tile.
+    </p>
+    <ul class="card-grid mt-6 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
+      {
+        shaders.map((shader) => (
+          <li class="card p-0" data-shader={shader.id}>
+            <figure class="tile [--tile-ratio:16/9]">
+              <canvas aria-label={`${shader.title} shader`} />
+              <button
+                type="button"
+                data-play
+                class="label absolute right-3 bottom-3 rounded-[2px] border border-rule-strong bg-bg/85 px-2 py-1 text-text hover:border-accent"
+                aria-pressed="true"
+              >
+                Pause
+              </button>
+            </figure>
+            <div class="flex flex-col gap-2 p-5">
+              <h3 class="text-h3 font-semibold">{shader.title}</h3>
+              <p class="label">{shader.caption}</p>
+              <p data-error hidden class="font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent" />
+              <details class="mt-2">
+                <summary class="label cursor-pointer hover:text-text">GLSL source</summary>
+                <pre class="mt-3 overflow-x-auto bg-surface-2 p-4 font-mono text-[0.78rem] leading-[1.5]"><code>{shader.source}</code></pre>
+              </details>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  {
+    galleries.map((gallery) => (
+      <Section title={gallery.title}>
+        {gallery.images.length > 0 ? (
+          <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+            {gallery.images.map((image) => (
+              <li class="tile [--tile-ratio:1]">
+                <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="card card--empty">{gallery.empty}</p>
+        )}
+      </Section>
+    ))
+  }
+
+  <Section title="Playlists">
+    {
+      playlists.length > 0 ? (
+        <ul class="rows [--rows-key:9rem]">
+          {playlists.map((playlist) => (
+            <li>
+              <span class="chip justify-self-start">{playlist.service}</span>
+              <a class="font-semibold" href={playlist.href} target="_blank" rel="noopener noreferrer">
+                {playlist.title} <span aria-hidden="true">↗</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="card card--empty">Apple Music, Spotify, and SoundCloud links land here.</p>
+      )
+    }
+  </Section>
+
+  <script>
+    import '../lib/shader-runtime';
+  </script>
+</Layout>

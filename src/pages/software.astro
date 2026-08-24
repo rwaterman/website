@@ -1,0 +1,44 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { site, software } from '../config/site';
+import { loadRepos } from '../lib/github';
+
+const repos = await loadRepos(software.owner, process.env.GITHUB_TOKEN, software);
+const monthYear = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+---
+
+<Layout
+  heading="Software"
+  lede="Everything public on GitHub, most recently pushed first — packages, infrastructure, demos, and toys."
+>
+  <a slot="aside" class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
+    GitHub <span aria-hidden="true">↗</span>
+  </a>
+
+  <ol class="rows rows--stack mt-10 [--rows-key:16rem]">
+    {
+      repos.map((repo) => (
+        <li>
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <a class="font-semibold" href={repo.html_url} target="_blank" rel="noopener noreferrer">
+              {repo.name}
+            </a>
+            {repo.language && <span class="chip">{repo.language}</span>}
+          </div>
+          <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <p class="max-w-[36rem] text-small text-muted">{repo.description}</p>
+            <p class="label flex gap-4 whitespace-nowrap">
+              {repo.pushed_at && <time datetime={repo.pushed_at}>{monthYear(repo.pushed_at)}</time>}
+              {repo.homepage && (
+                <a class="no-underline hover:text-text" href={repo.homepage} target="_blank" rel="noopener noreferrer">
+                  site <span aria-hidden="true">↗</span>
+                </a>
+              )}
+            </p>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</Layout>

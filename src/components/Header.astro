@@ -6,21 +6,34 @@ const isCurrent = (href: string) =>
   !href.startsWith('http') && (href.replace(/\/$/, '') || '/') === current;
 ---
 
-<header class="border-b border-rule">
-  <div
-    class="mx-auto flex w-full max-w-[64rem] flex-wrap items-baseline justify-between gap-x-8 gap-y-3 px-6 py-5"
-  >
-    <a class="font-display text-[1.35rem] font-bold uppercase leading-none tracking-[0.02em] no-underline" href="/">
-      {site.name}
+<header class="border-b border-rule bg-bg/85">
+  <div class="container-site grid gap-y-3 py-4 lg:flex lg:items-center lg:justify-between lg:gap-x-8 lg:py-5">
+    <a class="flex items-center gap-3 no-underline" href="/">
+      <svg class="h-7 w-7 shrink-0" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="6" class="fill-text" />
+        <rect x="10" y="46" width="44" height="6" class="fill-accent" />
+        <text
+          x="32"
+          y="40"
+          text-anchor="middle"
+          font-family="IBM Plex Sans Condensed, Arial Narrow, Helvetica, Arial, sans-serif"
+          font-weight="700"
+          font-size="32"
+          class="fill-bg">RW</text
+        >
+      </svg>
+      <span class="font-display text-[1.35rem] font-bold uppercase leading-none tracking-[0.02em]">{site.name}</span>
     </a>
 
-    <nav aria-label="Primary">
-      <ul class="flex flex-wrap gap-x-6 gap-y-2 font-mono text-[0.8rem] uppercase tracking-[0.1em]">
+    <nav class="min-w-0" aria-label="Primary">
+      <ul
+        class="strip max-w-full font-mono text-[0.8rem] uppercase tracking-[0.1em] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:[mask-image:none]"
+      >
         {
           nav.map((link) => (
             <li>
               <a
-                class="inline-block border-b-2 border-transparent py-1 text-muted no-underline hover:text-text aria-[current=page]:border-accent aria-[current=page]:text-text"
+                class="inline-block border-b-2 border-transparent py-1 whitespace-nowrap text-muted no-underline hover:text-text aria-[current=page]:border-accent aria-[current=page]:text-text"
                 href={link.href}
                 aria-current={isCurrent(link.href) ? 'page' : undefined}
                 {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
