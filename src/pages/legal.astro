@@ -1,20 +1,20 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
+import Year from '../components/Year.astro';
 import { site } from '../config/site';
 
 const updated = '2026-08-23';
-const year = new Date().getFullYear();
 const blogHost = site.links.blog.replace(/^https?:\/\//, '');
 const notesHost = site.links.notes.replace(/^https?:\/\//, '');
 ---
 
-<Layout
+<Layout background="mountains"
   heading="Legal"
   description={`AI disclosure, copyright, privacy, and disclaimers for ${site.name}'s sites`}
 >
   <p class="mt-4 max-w-[40rem] text-lede text-muted">
-    AI disclosure, copyright, privacy, and disclaimers for this site, <a href={site.links.blog}>{blogHost}</a>, and
+    AI disclosure, copyright, privacy, and disclaimers for this site, <a href={site.links.blog}>{blogHost}</a>, and{' '}
     <a href={site.links.notes}>{notesHost}</a>. Last updated {updated}.
   </p>
 
@@ -41,7 +41,7 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
   <Section title="Copyright">
     <div class="max-w-[40rem] space-y-4">
       <p>
-        Unless stated otherwise, the content on these sites is © {year} {site.name}. All rights reserved. Short
+        Unless stated otherwise, the content on these sites is © <Year /> {site.name}. All rights reserved. Short
         quotations with attribution and a link back are welcome.
       </p>
       <p>

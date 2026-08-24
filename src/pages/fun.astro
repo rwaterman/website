@@ -6,32 +6,35 @@ import { playlists } from '../config/site';
 import { shaders } from '../config/shaders';
 import { memes, cats } from '../lib/fun';
 
+// Sections without content are not rendered; drop files or links in and they appear.
 const galleries = [
-  { title: 'Memes', images: memes, empty: 'Curated slowly. Nothing posted yet.' },
-  { title: 'Cat Photos', images: cats, empty: 'The cats have not approved any photos yet.' },
-];
+  { title: 'Memes', images: memes },
+  { title: 'Cat Photos', images: cats },
+].filter((gallery) => gallery.images.length > 0);
 ---
 
-<Layout heading="Fun" lede="The non-work shelf — GenAI shaders, memes, cat photos, and what's playing.">
+<Layout background="hex" heading="Fun" lede="The non-work shelf — GenAI shaders first; memes, cat photos, and playlists as they land.">
   <Section title="GenAI Shaders">
     <p class="max-w-[36rem] text-muted">
-      Fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 — one fullscreen
-      triangle, three uniforms, no libraries. Source under each tile.
+      {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
+      one fullscreen triangle, three uniforms, no libraries. Source under each tile; every tile goes fullscreen.
     </p>
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+      <button type="button" class="button" data-random-shader>Random shader, fullscreen</button>
+      <p class="label">In fullscreen: <kbd>R</kbd> random · <kbd>Space</kbd> pause · <kbd>Esc</kbd> close</p>
+    </div>
     <ul class="card-grid mt-6 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
       {
         shaders.map((shader) => (
           <li class="card p-0" data-shader={shader.id}>
             <figure class="tile [--tile-ratio:16/9]">
               <canvas aria-label={`${shader.title} shader`} />
-              <button
-                type="button"
-                data-play
-                class="label absolute right-3 bottom-3 rounded-[2px] border border-rule-strong bg-bg/85 px-2 py-1 text-text hover:border-accent"
-                aria-pressed="true"
-              >
-                Pause
-              </button>
+              <div class="absolute right-3 bottom-3 flex gap-2">
+                <button type="button" data-play class="tile-button" aria-pressed="true">Pause</button>
+                <button type="button" data-fullscreen class="tile-button" aria-label={`${shader.title}, fullscreen`}>
+                  Fullscreen
+                </button>
+              </div>
             </figure>
             <div class="flex flex-col gap-2 p-5">
               <h3 class="text-h3 font-semibold">{shader.title}</h3>
@@ -39,7 +42,7 @@ const galleries = [
               <p data-error hidden class="font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent" />
               <details class="mt-2">
                 <summary class="label cursor-pointer hover:text-text">GLSL source</summary>
-                <pre class="mt-3 overflow-x-auto bg-surface-2 p-4 font-mono text-[0.78rem] leading-[1.5]"><code>{shader.source}</code></pre>
+                <pre class="mt-3 overflow-x-auto bg-surface-2 p-4 font-mono text-[0.78rem] leading-[1.5]"><code data-shader-source={shader.id}>{shader.source}</code></pre>
               </details>
             </div>
           </li>
@@ -51,24 +54,20 @@ const galleries = [
   {
     galleries.map((gallery) => (
       <Section title={gallery.title}>
-        {gallery.images.length > 0 ? (
-          <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {gallery.images.map((image) => (
-              <li class="tile [--tile-ratio:1]">
-                <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="card card--empty">{gallery.empty}</p>
-        )}
+        <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+          {gallery.images.map((image) => (
+            <li class="tile [--tile-ratio:1]">
+              <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
+            </li>
+          ))}
+        </ul>
       </Section>
     ))
   }
 
-  <Section title="Playlists">
-    {
-      playlists.length > 0 ? (
+  {
+    playlists.length > 0 && (
+      <Section title="Playlists">
         <ul class="rows [--rows-key:9rem]">
           {playlists.map((playlist) => (
             <li>
@@ -79,13 +78,32 @@ const galleries = [
             </li>
           ))}
         </ul>
-      ) : (
-        <p class="card card--empty">Apple Music, Spotify, and SoundCloud links land here.</p>
-      )
-    }
-  </Section>
+      </Section>
+    )
+  }
 
-  <script>
-    import '../lib/shader-runtime';
-  </script>
+  <div
+    data-stage
+    hidden
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Fullscreen shader"
+    class="fixed inset-0 z-50 bg-black text-white outline-none"
+  >
+    <canvas class="block h-full w-full" aria-label="Fullscreen shader"></canvas>
+    <p
+      data-error
+      hidden
+      class="absolute inset-x-0 top-0 m-4 bg-black/80 p-4 font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent"
+    >
+    </p>
+    <div data-stage-bar class="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 p-4 transition-opacity">
+      <span class="label mr-auto text-white/80" data-stage-title></span>
+      <button type="button" class="stage-button" data-play aria-pressed="true">Pause</button>
+      <button type="button" class="stage-button" data-random-shader>Random shader <kbd>R</kbd></button>
+      <button type="button" class="stage-button" data-stage-close>Close <kbd>Esc</kbd></button>
+    </div>
+  </div>
+
 </Layout>

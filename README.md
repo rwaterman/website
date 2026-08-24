@@ -1,7 +1,7 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, resume, software, fun, links + feeds, 404) built with
+A static site (bio, resume, links + feeds, 404, plus an unlisted fun page) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
@@ -10,9 +10,6 @@ share infrastructure owned by this repo.
 ## Requirements
 
 - Node.js ≥ 22.12 (`engines` in `package.json`)
-- Network access at build time: `/software` and the home page list public repos from the
-  GitHub API. Set `GITHUB_TOKEN` (any token; `gh auth token` works) to lift the
-  unauthenticated 60 req/hour limit. A failed request fails the build on purpose.
 - AWS CLI + CDK bootstrap in `us-west-2` and `us-east-1` for infra work
 
 ## Develop
@@ -26,38 +23,45 @@ npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 ```
 
-`SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs,
-the sitemap, and to point the blog/notes nav links at the matching dev subdomains.
-Site identity, nav, external links, and the `/software` pin/hide lists live in
-`src/config/site.ts`.
+`SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
+the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
+the dev deploy and local `npm run dev` (no `SITE`) link to `blog-dev` / `notes-dev`.
+Site identity, nav, external links, music profiles, and playlists live in `src/config/site.ts`.
+Time-based text is derived, not typed: "N+ years" comes from `careerStartYear` there, and the
+copyright year (`src/components/Year.astro`) is rendered at build time and corrected in the
+browser. Only the legal page's "Last updated" date is set by hand, when its text changes.
 
 ## Content
 
-- **Software** — every public, non-fork, non-archived repo for the configured owner,
-  most recently pushed first. Pin or hide names in `software` in `src/config/site.ts`.
+- **Fun** (`/fun`, currently built but not in the nav or sitemap — re-add `{ label: 'Fun', href: '/fun' }`
+  to `nav` in `src/config/site.ts` and drop the sitemap filter in `astro.config.mjs` to relaunch it)
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
-  `iTime` / `iMouse`; tiles initialize lazily and pause offscreen). Register new ones in
-  `src/config/shaders.ts`. The home-page poster is a static capture in
-  `src/assets/shaders/`.
+  `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
+  its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
+  context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
+  Fullscreen button and the section has "Random shader" — both open a fullscreen stage
+  (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
+  Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
+  on `Layout` names it per page (off under `prefers-reduced-motion`).
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
-  `playlists` in `src/config/site.ts`. Empty sections render a placeholder line.
+  `playlists` in `src/config/site.ts`. Sections without content are not rendered.
 - **Links → Feeds** — `public/feeds.opml` is the single copy: parsed at build time for
-  the Feeds section of `/links` and served as-is for download. Replace the file to update
+  the Feeds section of `/links` and served as-is (linked inline as "OPML"). Replace the file to update
   the list.
 
 ## Layout
 
 ```
 src/
-  pages/        index, resume, software, fun, links (+ feeds), legal, 404
+  pages/        index, resume, fun, links (+ feeds), legal, 404
   components/   Header, Footer, Section
   layouts/      Layout.astro
-  config/       site.ts — name, nav, external links, software, playlists; shaders.ts
-  lib/          github.ts, opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
+  config/       site.ts — name, nav, external links, playlists; shaders.ts
+  lib/          opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
-  assets/       shader posters, memes/, cats/ (processed by astro:assets)
+  assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon)
 infra/          AWS CDK app (TypeScript)
@@ -135,7 +139,7 @@ Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
   `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
-  with the env's `SITE` (and the workflow's `GITHUB_TOKEN` for the repo list), writes a
+  with the env's `SITE`, writes a
   `Disallow: /` `robots.txt` on dev, assumes `website-content-<env>`, syncs `dist/` to S3
   (hashed `_astro/*` assets cached immutable for a year, everything else
   `must-revalidate`), then invalidates `/*`.

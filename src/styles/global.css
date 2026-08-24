@@ -59,9 +59,13 @@
 }
 
 @layer base {
+  /* The page background lives on <html> so a fixed, z-index:-1 canvas can sit behind
+     the body's content without the body's own background covering it. */
   html {
     -webkit-text-size-adjust: 100%;
-    background: var(--color-bg);
+    background:
+      radial-gradient(var(--color-grid) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--color-bg);
   }
 
   body {
@@ -70,9 +74,6 @@
     line-height: 1.6;
     color: var(--color-text);
     font-feature-settings: 'ss02', 'cv01';
-    background:
-      radial-gradient(var(--color-grid) 1px, transparent 1px) 0 0 / 24px 24px,
-      var(--color-bg);
   }
 
   main {
@@ -148,6 +149,10 @@
   /* Numbered section: "01 ▌ TITLE ────────── more →". Counter resets per <main>. */
   .section {
     @apply mt-[clamp(3.5rem,8vw,6rem)];
+  }
+
+  main[data-compact] .section {
+    @apply mt-[clamp(2rem,3.5vw,3rem)];
   }
 
   .section-head {
@@ -235,6 +240,50 @@
 
   .chip {
     @apply inline-block whitespace-nowrap rounded-[2px] border border-rule px-[0.55em] py-[0.2em] font-mono text-label font-medium uppercase tracking-[0.12em] text-muted;
+  }
+
+  /* Overlay controls on a shader tile; the stage variant sits on black in every theme. */
+  .tile-button {
+    @apply rounded-[2px] border border-rule-strong bg-bg/85 px-2 py-1 font-mono text-label font-medium uppercase tracking-[0.12em] text-text hover:border-accent;
+  }
+
+  .stage-button {
+    @apply rounded-[2px] border border-white/40 bg-black/60 px-2.5 py-1.5 font-mono text-label font-medium uppercase tracking-[0.12em] text-white hover:border-accent;
+  }
+
+  .stage-button kbd,
+  .label kbd {
+    @apply mx-0.5 rounded-[2px] border border-current px-1 font-mono text-[0.65rem] opacity-80;
+  }
+
+  [data-stage-bar] {
+    background: linear-gradient(to top, rgb(0 0 0 / 0.75), transparent);
+  }
+
+  [data-stage][data-idle] {
+    cursor: none;
+  }
+
+  /* Home-page background shader: a fixed canvas behind everything, dimmed for legibility. */
+  [data-background] canvas {
+    @apply pointer-events-none fixed inset-0 -z-10 h-full w-full;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    [data-background] canvas {
+      opacity: 0.5;
+      mix-blend-mode: screen;
+    }
+  }
+
+  [data-background][data-paused] canvas {
+    display: none;
+  }
+
+  [data-stage][data-idle] [data-stage-bar]:not(:focus-within) {
+    opacity: 0;
   }
 
   /* Horizontally scrolling row with an edge fade; snap-scrolls, hides its scrollbar. */

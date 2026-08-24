@@ -1,18 +1,11 @@
 ---
-import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
-import { site, nav, software } from '../config/site';
-import { loadRepos } from '../lib/github';
-import { shaders } from '../config/shaders';
-import { parseOpml } from '../lib/opml';
-import { slugify } from '../lib/slug';
-import opml from '../../public/feeds.opml?raw';
-import shaderPoster from '../assets/shaders/tunnel.png';
+import { site } from '../config/site';
 
 const facts = [
   { key: 'Role', value: site.role },
-  { key: 'Experience', value: '10+ years, backend and cloud systems' },
+  { key: 'Experience', value: `${site.experience}, backend and cloud systems` },
   { key: 'Certified', value: 'AWS Developer (2023) · Solutions Architect (2020)' },
   { key: 'Based', value: 'Vancouver, WA — Portland, OR metro, or remote' },
 ];
@@ -31,25 +24,17 @@ const focusAreas = [
     blurb: 'Practical data pipelines, storage models, and observability patterns for systems people can operate.',
   },
 ];
-
-const repos = (await loadRepos(software.owner, process.env.GITHUB_TOKEN, software)).slice(0, 5);
-const feedGroups = parseOpml(opml);
-const elsewhere = [
-  ...nav.filter((link) => link.external),
-  { label: 'GitHub', href: site.links.github, blurb: 'Source for everything here, plus the packages and the toys.' },
-];
-const host = (href: string): string => new URL(href).host;
 ---
 
-<Layout>
+<Layout background="plasma" compact>
   <section class="grid gap-x-12 gap-y-10 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-end">
     <div class="@container">
       <p class="label">{site.role}</p>
       <h1 class="mt-3 font-display text-display font-bold uppercase tracking-[-0.01em] whitespace-nowrap">
         {site.name}
       </h1>
-      <p class="mt-6 max-w-[38rem] text-lede text-muted">{site.intro}</p>
-      <div class="mt-8 flex flex-wrap gap-3">
+      <p class="mt-5 max-w-[38rem] text-lede text-muted">{site.intro}</p>
+      <div class="mt-6 flex flex-wrap gap-3">
         <a class="button" href={site.links.resume}>Resume</a>
         <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
           GitHub <span aria-hidden="true">↗</span>
@@ -82,78 +67,5 @@ const host = (href: string): string => new URL(href).host;
     </ul>
   </Section>
 
-  <Section title="Software" more={{ href: '/software', label: 'All software' }}>
-    <ol class="rows rows--stack [--rows-key:14rem]">
-      {
-        repos.map((repo) => (
-          <li>
-            <a class="font-semibold" href={repo.html_url} target="_blank" rel="noopener noreferrer">
-              {repo.name}
-            </a>
-            <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-              <p class="max-w-[36rem] text-small text-muted">{repo.description}</p>
-              {repo.language && <span class="chip">{repo.language}</span>}
-            </div>
-          </li>
-        ))
-      }
-    </ol>
-  </Section>
 
-  <Section title="Fun" more={{ href: '/fun', label: 'All fun' }}>
-    <div class="grid items-center gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <a class="tile block [--tile-ratio:16/9]" href="/fun#genai-shaders">
-        <Image
-          src={shaderPoster}
-          alt="Afterburn — a neon tube tunnel rendered by a fragment shader"
-          widths={[640, 960, 1280]}
-          sizes="(min-width: 48rem) 36rem, 100vw"
-        />
-      </a>
-      <div>
-        <h3 class="text-h3 font-semibold">{shaders.length} GenAI shaders, live in WebGL2</h3>
-        <p class="mt-2 text-muted">
-          Fragment shaders drafted with generative AI and tuned by hand — a neon tunnel, raymarched solids, Voronoi
-          cells, a Julia set, and more. Plus memes, cat photos, and playlists.
-        </p>
-        <a class="button button--ghost mt-6" href="/fun">Open fun <span aria-hidden="true">→</span></a>
-      </div>
-    </div>
-  </Section>
-
-  <Section title="Feeds" more={{ href: '/links#feeds', label: 'All feeds' }}>
-    <p class="max-w-[36rem] text-muted">What I read, by folder. The OPML export imports into any feed reader.</p>
-    <ul class="mt-5 flex flex-wrap gap-2">
-      {
-        feedGroups.map((group) => (
-          <li>
-            <a
-              class="chip no-underline hover:border-accent hover:text-text"
-              href={`/links#feed-${slugify(group.title)}`}
-            >
-              {group.title}
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
-
-  <Section title="Elsewhere">
-    <ul class="card-grid">
-      {
-        elsewhere.map((item) => (
-          <li class="contents">
-            <a class="card" href={item.href} target="_blank" rel="noopener noreferrer">
-              <h3 class="text-h3 font-semibold">
-                {item.label} <span aria-hidden="true">↗</span>
-              </h3>
-              <p class="text-small text-muted">{item.blurb}</p>
-              <span class="label mt-auto pt-2">{host(item.href)}</span>
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
 </Layout>
