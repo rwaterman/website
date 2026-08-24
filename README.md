@@ -48,7 +48,7 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Sections without content are not rendered.
 - **Links → Feeds** — `public/feeds.opml` is the single copy: parsed at build time for
-  the Feeds section of `/links` and served as-is for download. Replace the file to update
+  the Feeds section of `/links` and served as-is (linked inline as "OPML"). Replace the file to update
   the list.
 
 ## Layout

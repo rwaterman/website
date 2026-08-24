@@ -8,7 +8,7 @@ import opml from '../../public/feeds.opml?raw';
 
 const linkSections = [
   { title: 'Sites', links: nav.filter((link) => link.external) },
-  { title: 'Social', links: socials },
+  { title: 'Code', links: socials },
   { title: 'Music', links: music },
 ];
 const host = (href: string): string => new URL(href).host;
@@ -26,11 +26,7 @@ const feedGroups = [mine, ...parseOpml(opml)];
 <Layout background="flow"
   heading="Links"
   description={`All of ${site.name}'s links in one place`}
-  lede="Everywhere else you can find me, what I listen to, and what I read."
 >
-  <a slot="aside" class="button button--ghost" href="/feeds.opml" download="rick-waterman-feeds.opml">
-    Download OPML <span aria-hidden="true">↓</span>
-  </a>
 
   {
     linkSections.map((section) => (
@@ -53,7 +49,9 @@ const feedGroups = [mine, ...parseOpml(opml)];
   }
 
   <Section title="Feeds">
-    <p class="max-w-[36rem] text-muted">What I read, by folder. The OPML export imports into any feed reader.</p>
+    <p class="max-w-[36rem] text-muted">
+      What I read, by folder. <a href="/feeds.opml" download="rick-waterman-feeds.opml">OPML</a> for any feed reader.
+    </p>
     <div class="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
       {
         feedGroups.map((group) => (
