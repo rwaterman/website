@@ -86,7 +86,7 @@ flowchart LR
   U[Browser] --> R53[Route53<br/>A/AAAA alias] --> CF[CloudFront<br/>ACM cert + rewrite Function]
   CF --> S3
   WAF[Shared WAF WebACL] -.associated.- CF
-  CF -. /api/contact<br/>parked off .-> API[HTTP API + Lambda + DynamoDB]
+  CF -->|/api/contact| API[HTTP API + Lambda + DynamoDB] --> SES[SES email]
 ```
 
 The home region is `us-west-2`; everything that can live there does (buckets,
@@ -132,10 +132,13 @@ that may only write to that environment's bucket and invalidate its distribution
 SSM parameters `/website/<env>/bucket-name` and `/website/<env>/distribution-id` that the
 deploy workflow resolves at run time, so nothing is hardcoded in CI.
 
-A contact form (HTTP API → Lambda → SES, DynamoDB per-IP rate limit, served through the
-same distribution at `/api/contact`) is implemented but parked behind
-`enableContactForm: false` in `site-config.ts`. Enabling it needs a verified SES identity
-and the SecureString parameter `/website/<env>/contact-recipient`.
+A contact form (`/contact` page → HTTP API → Lambda → SES, DynamoDB per-IP rate limit,
+served through the same distribution at `/api/contact`) is enabled per environment via
+`enableContactForm` in `site-config.ts`. The recipient address lives only in the
+SecureString parameter `/website/<env>/contact-recipient` (read by the Lambda at run
+time) and in the verified SES identity — it never appears in the repo, the client, or
+build output. Swap recipients by verifying the new address in SES (us-west-2) and
+updating the parameter; no deploy needed.
 
 ## CI/CD
 

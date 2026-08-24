@@ -146,6 +146,11 @@
     @apply border-accent bg-transparent text-accent;
   }
 
+  /* Text inputs and textareas on the contact form. */
+  .field {
+    @apply block w-full rounded-[3px] border border-rule-strong bg-surface px-3 py-2 text-text;
+  }
+
   /* Numbered section: "01 ▌ TITLE ────────── more →". Counter resets per <main>. */
   .section {
     @apply mt-[clamp(3.5rem,8vw,6rem)];
