@@ -1,43 +1,77 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { site, socials } from '../config/site';
+import Section from '../components/Section.astro';
+import { site, nav, socials, music } from '../config/site';
+import { parseOpml, type FeedGroup } from '../lib/opml';
+import { slugify } from '../lib/slug';
+import opml from '../../public/feeds.opml?raw';
 
-const sections = [
-  {
-    title: 'Sites',
-    links: [
-      { label: 'Blog', href: site.links.blog },
-      { label: 'Notes', href: site.links.notes },
-    ],
-  },
-  { title: 'Social', links: socials },
+const linkSections = [
+  { title: 'Sites', links: nav.filter((link) => link.external) },
+  { title: 'Code', links: socials },
+  { title: 'Music', links: music },
 ];
+const host = (href: string): string => new URL(href).host;
+
+const mine: FeedGroup = {
+  title: 'Mine',
+  feeds: [
+    { title: 'Blog', xmlUrl: `${site.links.blog}/index.xml`, htmlUrl: site.links.blog },
+    { title: 'Notes', xmlUrl: `${site.links.notes}/index.xml`, htmlUrl: site.links.notes },
+  ],
+};
+const feedGroups = [mine, ...parseOpml(opml)];
 ---
 
-<Layout title="Links" description={`All of ${site.name}'s links in one place`}>
-  <h1 class="font-display text-[clamp(2.5rem,6vw,4rem)] font-bold uppercase leading-[0.95]">Links</h1>
-  <p class="mt-3 text-muted">Everywhere else you can find me.</p>
+<Layout background="caustics"
+  heading="Links"
+  description={`All of ${site.name}'s links in one place`}
+>
 
   {
-    sections.map((section) => (
-      <section class="mt-10 grid gap-x-12 gap-y-3 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby={`links-${section.title}`}>
-        <h2 class="label" id={`links-${section.title}`}>{section.title}</h2>
-        <ul class="max-w-[32rem] border-t border-rule-strong">
+    linkSections.map((section) => (
+      <Section title={section.title}>
+        <ul class="rows rows--stack max-w-[40rem] [--rows-key:12rem]">
           {section.links.map((link) => (
-            <li class="border-b border-rule">
-              <a
-                class="flex items-baseline justify-between gap-4 py-3 font-medium no-underline hover:text-accent"
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>{link.label}</span>
-                <span class="font-mono text-[0.8rem] text-muted">{link.href.replace(/^https?:\/\//, '')} ↗</span>
+            <li>
+              <a class="font-semibold" href={link.href} target="_blank" rel="noopener noreferrer">
+                {link.label} <span aria-hidden="true">↗</span>
               </a>
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p class="text-small text-muted">{'blurb' in link && link.blurb}</p>
+                <span class="chip">{host(link.href)}</span>
+              </div>
             </li>
           ))}
         </ul>
-      </section>
+      </Section>
     ))
   }
+
+  <Section title="Feeds">
+    <p class="max-w-[36rem] text-muted">
+      What I read, by folder. <a href="/feeds.opml" download="rick-waterman-feeds.opml">OPML</a> for any feed reader.
+    </p>
+    <div class="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
+      {
+        feedGroups.map((group) => (
+          <div id={`feed-${slugify(group.title)}`}>
+            <h3 class="label">{group.title}</h3>
+            <ul class="mt-2 text-small">
+              {group.feeds.map((feed) => (
+                <li class="flex items-baseline justify-between gap-3 border-b border-rule py-2">
+                  <a href={feed.htmlUrl ?? feed.xmlUrl} target="_blank" rel="noopener noreferrer">
+                    {feed.title}
+                  </a>
+                  <a class="label no-underline hover:text-text" href={feed.xmlUrl} target="_blank" rel="noopener noreferrer">
+                    rss
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+  </Section>
 </Layout>

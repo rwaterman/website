@@ -8,7 +8,8 @@ import sitemap from '@astrojs/sitemap';
 // vs https://rickwaterman.com) so canonical URLs and sitemaps are correct.
 export default defineConfig({
   site: process.env.SITE,
-  integrations: [sitemap()],
+  // /fun is built but unlinked for now (no nav item), so keep it out of the sitemap too.
+  integrations: [sitemap({ filter: (page) => !page.endsWith('/fun/') })],
   vite: {
     plugins: [tailwindcss()],
   },

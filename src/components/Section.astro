@@ -1,0 +1,35 @@
+---
+/**
+ * Numbered page section. The "01 ▌" numeral comes from a CSS counter on <main>,
+ * so sections number themselves in document order.
+ */
+interface Props {
+  title: string;
+  /** Anchor id; defaults to a slug of the title. */
+  id?: string;
+  /** Optional trailing "more →" link. */
+  more?: { href: string; label: string };
+}
+
+const { title, more } = Astro.props;
+const id =
+  Astro.props.id ??
+  title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+---
+
+<section class="section" id={id} aria-labelledby={`${id}-title`}>
+  <div class="section-head">
+    <h2 id={`${id}-title`}>{title}</h2>
+    {
+      more && (
+        <a class="label whitespace-nowrap no-underline hover:text-text" href={more.href}>
+          {more.label} <span aria-hidden="true">→</span>
+        </a>
+      )
+    }
+  </div>
+  <slot />
+</section>

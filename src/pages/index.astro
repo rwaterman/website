@@ -1,10 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
 import { site } from '../config/site';
 
 const facts = [
   { key: 'Role', value: site.role },
-  { key: 'Experience', value: '10+ years, backend and cloud systems' },
+  { key: 'Experience', value: `${site.experience}, backend and cloud systems` },
   { key: 'Certified', value: 'AWS Developer (2023) · Solutions Architect (2020)' },
   { key: 'Based', value: 'Vancouver, WA — Portland, OR metro, or remote' },
 ];
@@ -23,21 +24,17 @@ const focusAreas = [
     blurb: 'Practical data pipelines, storage models, and observability patterns for systems people can operate.',
   },
 ];
-
-const elsewhere = [
-  { label: 'Blog', href: site.links.blog, blurb: "Writing on cloud architecture, engineering, and whatever I'm building." },
-  { label: 'Notes', href: site.links.notes, blurb: 'References, implementation notes, and technical docs.' },
-];
 ---
 
-<Layout>
+<Layout background="plasma" compact>
   <section class="grid gap-x-12 gap-y-10 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-end">
     <div class="@container">
-      <h1 class="font-display text-[min(13cqw,7.5rem)] font-bold uppercase leading-[0.9] tracking-[-0.01em] whitespace-nowrap">
+      <p class="label">{site.role}</p>
+      <h1 class="mt-3 font-display text-display font-bold uppercase tracking-[-0.01em] whitespace-nowrap">
         {site.name}
       </h1>
-      <p class="mt-6 max-w-[38rem] text-[clamp(1.05rem,1.6vw,1.2rem)] leading-[1.55] text-muted">{site.intro}</p>
-      <div class="mt-8 flex flex-wrap gap-3">
+      <p class="mt-5 max-w-[38rem] text-lede text-muted">{site.intro}</p>
+      <div class="mt-6 flex flex-wrap gap-3">
         <a class="button" href={site.links.resume}>Resume</a>
         <a class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
           GitHub <span aria-hidden="true">↗</span>
@@ -45,45 +42,30 @@ const elsewhere = [
       </div>
     </div>
 
-    <dl class="border-t border-rule-strong" aria-label="At a glance">
+    <dl class="rows rows--active" aria-label="At a glance">
       {
         facts.map((fact) => (
-          <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-4 border-b border-rule py-3">
+          <div>
             <dt class="label pt-[0.2em]">{fact.key}</dt>
-            <dd class="text-[0.95rem] leading-[1.45]">{fact.value}</dd>
+            <dd class="text-small">{fact.value}</dd>
           </div>
         ))
       }
     </dl>
   </section>
 
-  <section class="mt-[clamp(3.5rem,8vw,6rem)] grid gap-x-12 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="focus-title">
-    <h2 class="label" id="focus-title">Focus</h2>
-    <dl class="border-t border-rule-strong">
+  <Section title="Focus">
+    <ul class="card-grid">
       {
         focusAreas.map((area) => (
-          <div class="grid gap-x-8 gap-y-1 border-b border-rule py-5 md:grid-cols-[14rem_minmax(0,1fr)]">
-            <dt class="font-semibold">{area.title}</dt>
-            <dd class="max-w-[36rem] text-muted">{area.blurb}</dd>
-          </div>
-        ))
-      }
-    </dl>
-  </section>
-
-  <section class="mt-[clamp(3rem,6vw,4.5rem)] grid gap-x-12 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)]" aria-labelledby="elsewhere-title">
-    <h2 class="label" id="elsewhere-title">Elsewhere</h2>
-    <ul class="border-t border-rule-strong">
-      {
-        elsewhere.map((item) => (
-          <li class="grid gap-x-8 gap-y-1 border-b border-rule py-5 md:grid-cols-[14rem_minmax(0,1fr)]">
-            <a class="font-semibold" href={item.href} target="_blank" rel="noopener noreferrer">
-              {item.label} <span aria-hidden="true">↗</span>
-            </a>
-            <p class="max-w-[36rem] text-muted">{item.blurb}</p>
+          <li class="card">
+            <h3 class="text-h3 font-semibold">{area.title}</h3>
+            <p class="text-small text-muted">{area.blurb}</p>
           </li>
         ))
       }
     </ul>
-  </section>
+  </Section>
+
+
 </Layout>

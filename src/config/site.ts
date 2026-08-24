@@ -11,27 +11,43 @@ export interface NavLink {
   href: string;
   /** External links open in a new tab and render an arrow indicator. */
   external?: boolean;
+  /** One-line description, shown wherever the link is listed with context. */
+  blurb?: string;
 }
 
 export interface SocialLink {
   label: string;
   href: string;
+  /** One-line description, shown wherever the link is listed with context. */
+  blurb?: string;
 }
 
-const isDevDeploy = process.env.SITE === 'https://dev.rickwaterman.com';
+export interface Playlist {
+  title: string;
+  href: string;
+  /** Where it lives — Apple Music, Spotify, SoundCloud. */
+  service: string;
+}
+
+// Only the explicit prod SITE links to the prod blog/notes; the dev deploy and local
+// `astro dev` / `astro build` (no SITE) point at the -dev subdomains.
+const isProdDeploy = process.env.SITE === 'https://rickwaterman.com';
 const externalLinks = {
-  blog: `https://blog${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
-  notes: `https://notes${isDevDeploy ? '-dev' : ''}.rickwaterman.com`,
+  blog: `https://blog${isProdDeploy ? '' : '-dev'}.rickwaterman.com`,
+  notes: `https://notes${isProdDeploy ? '' : '-dev'}.rickwaterman.com`,
 };
+
+/** First year of professional backend work; "N+ years" everywhere derives from it. */
+const careerStartYear = 2016;
+const experience = `${new Date().getFullYear() - careerStartYear}+ years`;
 
 export const site = {
   name: 'Rick Waterman',
-  role: 'Lead Cloud Architect',
+  role: 'Cloud Solutions Architect & Engineer',
   /** Used for <title>, meta description, and Open Graph tags. */
-  description:
-    'Rick Waterman — Lead Cloud Architect. 10+ years building backend and cloud systems, focused on AWS serverless architecture and data platforms.',
-  intro:
-    'I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. Ten-plus years across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.',
+  description: `Rick Waterman — Cloud Solutions Architect & Engineer. ${experience} building backend and cloud systems, focused on AWS serverless architecture and data platforms.`,
+  intro: `I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. ${experience} across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.`,
+  experience,
   links: {
     github: 'https://github.com/rwaterman',
     blog: externalLinks.blog,
@@ -40,17 +56,39 @@ export const site = {
     resume: '/resume',
     /** Resume PDF served from public/. */
     resumePdf: '/resume.pdf',
+    /** AI, copyright, privacy, and disclaimer notices for this site, the blog, and notes. */
+    legal: '/legal',
   },
 } as const;
 
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
   { label: 'Resume', href: site.links.resume },
+  {
+    label: 'Notes',
+    href: site.links.notes,
+    external: true,
+    blurb: 'References, implementation notes, and technical docs.',
+  },
+  {
+    label: 'Blog',
+    href: site.links.blog,
+    external: true,
+    blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
+  },
   { label: 'Links', href: '/links' },
-  { label: 'Blog', href: site.links.blog, external: true },
-  { label: 'Notes', href: site.links.notes, external: true },
 ];
 
 export const socials: SocialLink[] = [
   { label: 'GitHub', href: site.links.github },
 ];
+
+/** Music profiles listed on /links. */
+export const music: SocialLink[] = [
+  { label: 'Apple Music', href: 'https://music.apple.com/profile/rickwaterman', blurb: 'Library, playlists, and what is on repeat.' },
+  { label: 'Spotify', href: 'https://open.spotify.com/user/1219581587', blurb: 'Public playlists.' },
+  { label: 'SoundCloud', href: 'https://soundcloud.com/kovyeej', blurb: 'Mixes, finds, and the occasional upload.' },
+];
+
+/** Music playlists listed on /fun. Empty until links are added. */
+export const playlists: Playlist[] = [];

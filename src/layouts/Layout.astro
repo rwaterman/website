@@ -7,11 +7,21 @@ import { site } from '../config/site';
 interface Props {
   title?: string;
   description?: string;
+  /** Renders a page header (eyebrow / h1 / lede) above the slot. */
+  heading?: string;
+  eyebrow?: string;
+  lede?: string;
+  /** Shader id drawn behind the page; see src/config/shaders.ts. */
+  background?: string;
+  /** Tighter vertical rhythm so a short page fits one fullscreen viewport. */
+  compact?: boolean;
 }
 
-const { title, description = site.description } = Astro.props;
-const pageTitle = title ? `${title} · ${site.name}` : site.name;
+const { title, description = site.description, heading, eyebrow, lede, background, compact = false } = Astro.props;
+const pageTitle = title ?? heading;
+const documentTitle = pageTitle ? `${pageTitle} · ${site.name}` : site.name;
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
+const ogImage = Astro.site ? new URL('/og.png', Astro.site).href : undefined;
 ---
 
 <!doctype html>
@@ -23,7 +33,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     <link rel="icon" href="/favicon.ico" />
     <meta name="generator" content={Astro.generator} />
 
-    <title>{pageTitle}</title>
+    <title>{documentTitle}</title>
     <meta name="description" content={description} />
     {canonical && <link rel="canonical" href={canonical} />}
 
@@ -31,16 +41,44 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     <meta name="theme-color" content="#15181b" media="(prefers-color-scheme: dark)" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={pageTitle} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={documentTitle} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
-    <meta name="twitter:card" content="summary" />
+    {
+      ogImage && (
+        <>
+          <meta property="og:image" content={ogImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+        </>
+      )
+    }
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
   </head>
-  <body class="flex min-h-[100dvh] flex-col bg-bg font-sans text-[1.0625rem] leading-[1.6] text-text antialiased">
-    <Header />
-    <main class="mx-auto w-full max-w-[64rem] flex-auto px-6 py-[clamp(2.5rem,6vw,5.5rem)]">
+  <body class="flex min-h-[100dvh] flex-col antialiased">
+    <Header background={background} />
+    <main
+      class:list={['container-site flex-auto', compact ? 'py-[clamp(2rem,3.5vw,3rem)]' : 'py-[clamp(2.5rem,6vw,5.5rem)]']}
+      data-compact={compact || undefined}
+    >
+      {
+        heading && (
+          <header class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+            <div class="max-w-[38rem]">
+              {eyebrow && <p class="label">{eyebrow}</p>}
+              <h1 class="mt-2 font-display text-h1 font-bold uppercase tracking-[-0.01em]">{heading}</h1>
+              {lede && <p class="mt-4 text-lede text-muted">{lede}</p>}
+            </div>
+            <slot name="aside" />
+          </header>
+        )
+      }
       <slot />
     </main>
     <Footer />
+    <script>
+      import '../lib/shader-runtime';
+    </script>
   </body>
 </html>
