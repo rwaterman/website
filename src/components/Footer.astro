@@ -9,7 +9,10 @@ const externalNav = nav.filter((link) => link.external);
   <div
     class="container-site flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 py-6 font-mono text-[0.75rem] uppercase tracking-[0.1em] text-muted"
   >
-    <p>© {year} {site.name}</p>
+    <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Legal">
+      <p>© {year} {site.name}</p>
+      <a class="no-underline hover:text-text" href={site.links.legal}>Legal</a>
+    </nav>
     <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
       {
         [...externalNav, ...socials].map((link) => (

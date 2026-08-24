@@ -51,7 +51,7 @@ Site identity, nav, external links, and the `/software` pin/hide lists live in
 
 ```
 src/
-  pages/        index, resume, software, fun, links (+ feeds), 404
+  pages/        index, resume, software, fun, links (+ feeds), legal, 404
   components/   Header, Footer, Section
   layouts/      Layout.astro
   config/       site.ts — name, nav, external links, software, playlists; shaders.ts

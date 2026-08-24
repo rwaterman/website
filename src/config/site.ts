@@ -49,6 +49,8 @@ export const site = {
     resume: '/resume',
     /** Resume PDF served from public/. */
     resumePdf: '/resume.pdf',
+    /** AI, copyright, privacy, and disclaimer notices for this site, the blog, and notes. */
+    legal: '/legal',
   },
 } as const;
 

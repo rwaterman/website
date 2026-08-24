@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
+import { site } from '../config/site';
+
+const updated = '2026-08-23';
+const year = new Date().getFullYear();
+const blogHost = site.links.blog.replace(/^https?:\/\//, '');
+const notesHost = site.links.notes.replace(/^https?:\/\//, '');
+---
+
+<Layout
+  heading="Legal"
+  description={`AI disclosure, copyright, privacy, and disclaimers for ${site.name}'s sites`}
+>
+  <p class="mt-4 max-w-[40rem] text-lede text-muted">
+    AI disclosure, copyright, privacy, and disclaimers for this site, <a href={site.links.blog}>{blogHost}</a>, and
+    <a href={site.links.notes}>{notesHost}</a>. Last updated {updated}.
+  </p>
+
+  <Section title="AI disclosure">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        The writing on these sites reflects my own ideas and opinions. I draft and edit with generative AI assistance —
+        currently Anthropic's Claude models — including source research, and I review everything before it is
+        published. Nothing goes out without that review.
+      </p>
+      <p>
+        Blog posts carry a notice at the top naming the model that helped. Notes are drafted, edited, and organized
+        with the same tools; clipped third-party articles there are marked as such and remain the work of their
+        original authors.
+      </p>
+      <p>
+        Code for this site and for my public repositories on <a href={site.links.github}>GitHub</a> is written with
+        AI coding assistants. It is reviewed and tested before it is merged, and each repository's history records
+        what changed and when.
+      </p>
+    </div>
+  </Section>
+
+  <Section title="Copyright">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        Unless stated otherwise, the content on these sites is © {year} {site.name}. All rights reserved. Short
+        quotations with attribution and a link back are welcome.
+      </p>
+      <p>
+        Code in my public repositories is licensed under the license file that accompanies each repository. Quoted and
+        clipped third-party material belongs to its original authors and is reproduced for reference with attribution.
+      </p>
+    </div>
+  </Section>
+
+  <Section title="Privacy">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        These are static sites with no accounts and no forms that accept input. This site and the blog set no cookies
+        and load no analytics, advertising, or tracking scripts. The notes site loads
+        <a href="https://plausible.io/data-policy" target="_blank" rel="noopener noreferrer">Plausible</a>, a
+        cookieless analytics script that counts page views in aggregate without storing personal identifiers or
+        tracking you across sites, and serves its web fonts from Google Fonts, which sees your IP address when the
+        fonts load.
+      </p>
+      <p>
+        The sites are hosted on Amazon Web Services in the United States (S3, CloudFront, Route 53, and AWS WAF). To
+        serve pages and block abuse, AWS processes standard request metadata — IP address, user agent, and the URL
+        requested — and applies security rules that block traffic from sanctioned countries, rate-limit individual
+        addresses, and reject known-malicious IPs. I do not enable access logging; AWS may retain sampled request
+        metadata briefly for security monitoring under the
+        <a href="https://aws.amazon.com/privacy/" target="_blank" rel="noopener noreferrer">AWS Privacy Notice</a>.
+      </p>
+      <p>
+        Links to other sites lead to services with their own privacy practices. If you contact me directly, I keep the
+        correspondence only as long as needed to respond.
+      </p>
+    </div>
+  </Section>
+
+  <Section title="Disclaimers">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        This is a personal site. The views here are my own and do not represent any employer, client, or other
+        organization, past or present.
+      </p>
+      <p>
+        Content is provided for general information, as is, without warranty of any kind. It is not legal, financial,
+        security, or other professional advice. Technical guidance ages quickly; verify it against current
+        documentation before relying on it in production.
+      </p>
+      <p>
+        I am not affiliated with, sponsored by, or endorsed by Amazon Web Services, Anthropic, GitHub, or any other
+        vendor mentioned. Product names and trademarks belong to their owners. There is no sponsored, affiliate, or
+        paid content on these sites; if that changes, it will be disclosed where it appears.
+      </p>
+    </div>
+  </Section>
+
+  <Section title="Contact">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        For questions about this page, corrections, attribution, or a request to remove material you hold rights to,
+        reach me on <a href={site.links.github}>GitHub</a>. I will respond promptly.
+      </p>
+    </div>
+  </Section>
+
+  <Section title="Changes">
+    <div class="max-w-[40rem] space-y-4">
+      <p>
+        This page will change as the sites and the tools behind them change. The date at the top is the last revision;
+        the <a href="https://github.com/rwaterman/website">site repository</a> holds the full history.
+      </p>
+    </div>
+  </Section>
+</Layout>
