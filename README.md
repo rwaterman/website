@@ -29,7 +29,7 @@ Site identity, nav, and social links live in `src/config/site.ts`.
 
 ```
 src/
-  pages/        index, links, resume, 404
+  pages/        index, links, resume, legal, 404
   components/   Header, Footer
   layouts/      Layout.astro
   config/       site.ts — name, nav, external links
