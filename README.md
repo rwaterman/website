@@ -1,7 +1,7 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, resume, fun, links + feeds, 404) built with
+A static site (bio, resume, links + feeds, 404, plus an unlisted fun page) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
@@ -29,6 +29,8 @@ Site identity, nav, external links, and playlists live in `src/config/site.ts`.
 
 ## Content
 
+- **Fun** (`/fun`, currently built but not in the nav or sitemap — re-add `{ label: 'Fun', href: '/fun' }`
+  to `nav` in `src/config/site.ts` and drop the sitemap filter in `astro.config.mjs` to relaunch it)
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into

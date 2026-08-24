@@ -57,7 +57,6 @@ export const site = {
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
   { label: 'Resume', href: site.links.resume },
-  { label: 'Fun', href: '/fun' },
   { label: 'Links', href: '/links' },
   {
     label: 'Notes',
