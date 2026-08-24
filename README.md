@@ -70,6 +70,7 @@ infra/          AWS CDK app (TypeScript)
   lib/edge-stack.ts     shared WAF (us-east-1)
   lib/cert-stack.ts     per-env ACM certificate (us-east-1)
   lib/site-stack.ts     one environment (us-west-2)
+  lib/redirect-stack.ts rickgwaterman.com → rickwaterman.com 301 (us-east-1)
   lib/site-config.ts    SITE_ENVS, account/region/zone
 .github/workflows/
   deploy.yml    build + publish content
@@ -92,11 +93,15 @@ The home region is `us-west-2`; everything that can live there does (buckets,
 distributions, roles, SSM). CloudFront requires its ACM certificate and a
 `CLOUDFRONT`-scoped WAF WebACL in `us-east-1`, so those sit in thin edge stacks and are
 passed to the home-region stacks with CDK `crossRegionReferences`. DNS is the
-`rickwaterman.com` hosted zone.
+`rickwaterman.com` hosted zone. The legacy `rickgwaterman.com` zone only holds the alias
+records of `WebsiteRedirect`, which 301s every host under it to the same host under
+`rickwaterman.com` (`blog.rickgwaterman.com/x?y` → `blog.rickwaterman.com/x?y`); that stack
+has nothing regional but its certificate, so it lives entirely in us-east-1.
 
 | Stack | Region | Contents |
 | --- | --- | --- |
 | `WebsiteEdge` | us-east-1 | Shared CloudFront WebACL |
+| `WebsiteRedirect` | us-east-1 | Legacy-domain redirect: wildcard certificate, CloudFront + Function, apex and `*` alias records |
 | `WebsiteCert<Env>` | us-east-1 | That environment's DNS-validated ACM certificate |
 | `WebsiteShared` | us-west-2 | OIDC provider, `website-infra-deploy` role, SSM param with the WebACL ARN |
 | `WebsiteSite<Env>` | us-west-2 | Bucket, distribution, DNS, content role, SSM params |
@@ -134,8 +139,8 @@ and the SecureString parameter `/website/<env>/contact-recipient`.
 
 ## CI/CD
 
-Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID` and
-`HOSTED_ZONE_ID`; no long-lived AWS keys exist.
+Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID`,
+`HOSTED_ZONE_ID`, and `REDIRECT_HOSTED_ZONE_ID`; no long-lived AWS keys exist.
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
   `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
@@ -157,7 +162,8 @@ locally with admin credentials. Both regions must be CDK-bootstrapped:
 ```sh
 cd infra && npm ci
 npx cdk bootstrap aws://<account>/us-west-2 aws://<account>/us-east-1
-AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> npx cdk deploy --all --require-approval never
+AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> REDIRECT_HOSTED_ZONE_ID=<legacyZoneId> \
+  npx cdk deploy --all --require-approval never
 ```
 
 Deploy `WebsiteShared` before the blog/notes infra — they import its OIDC provider and

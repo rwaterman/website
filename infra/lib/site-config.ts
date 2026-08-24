@@ -13,6 +13,9 @@ export const EDGE_REGION = 'us-east-1';
 
 export const HOSTED_ZONE_ID = requireEnv('HOSTED_ZONE_ID');
 export const ZONE_NAME = 'rickwaterman.com';
+/** Legacy domain: it and every subdomain 301 to the same host under ZONE_NAME. */
+export const REDIRECT_HOSTED_ZONE_ID = requireEnv('REDIRECT_HOSTED_ZONE_ID');
+export const REDIRECT_ZONE_NAME = 'rickgwaterman.com';
 
 export const GITHUB_REPO = 'rwaterman/website';
 
