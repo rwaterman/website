@@ -11,9 +11,11 @@ interface Props {
   heading?: string;
   eyebrow?: string;
   lede?: string;
+  /** Shader id drawn behind the page, toggled from the nav; see src/config/shaders.ts. */
+  background?: string;
 }
 
-const { title, description = site.description, heading, eyebrow, lede } = Astro.props;
+const { title, description = site.description, heading, eyebrow, lede, background } = Astro.props;
 const pageTitle = title ?? heading;
 const documentTitle = pageTitle ? `${pageTitle} · ${site.name}` : site.name;
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
@@ -53,7 +55,7 @@ const ogImage = Astro.site ? new URL('/og.png', Astro.site).href : undefined;
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
   </head>
   <body class="flex min-h-[100dvh] flex-col antialiased">
-    <Header />
+    <Header background={background} />
     <main class="container-site flex-auto py-[clamp(2.5rem,6vw,5.5rem)]">
       {
         heading && (
@@ -70,5 +72,16 @@ const ogImage = Astro.site ? new URL('/og.png', Astro.site).href : undefined;
       <slot />
     </main>
     <Footer />
+    <script>
+      import '../lib/shader-runtime';
+
+      const KEY = 'background-shader';
+      const tile = document.querySelector<HTMLElement>('[data-background]');
+      const toggle = tile?.querySelector<HTMLButtonElement>('[data-play]');
+      if (tile && toggle) {
+        if (localStorage.getItem(KEY) === 'off') toggle.click();
+        toggle.addEventListener('click', () => localStorage.setItem(KEY, tile.hasAttribute('data-paused') ? 'off' : 'on'));
+      }
+    </script>
   </body>
 </html>

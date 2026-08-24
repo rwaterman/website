@@ -10,8 +10,7 @@ share infrastructure owned by this repo.
 ## Requirements
 
 - Node.js ≥ 22.12 (`engines` in `package.json`)
-- Network access at build time: `/software` and the home page list public repos from the
-  GitHub API. Set `GITHUB_TOKEN` (any token; `gh auth token` works) to lift the
+- Network access at build time: `/software` lists public repos from the GitHub API. Set `GITHUB_TOKEN` (any token; `gh auth token` works) to lift the
   unauthenticated 60 req/hour limit. A failed request fails the build on purpose.
 - AWS CLI + CDK bootstrap in `us-west-2` and `us-east-1` for infra work
 
@@ -33,13 +32,21 @@ Site identity, nav, external links, and the `/software` pin/hide lists live in
 
 ## Content
 
-- **Software** — every public, non-fork, non-archived repo for the configured owner,
-  most recently pushed first. Pin or hide names in `software` in `src/config/site.ts`.
+- **Software** — `software.highlights` in `src/config/site.ts` is the curated list (cards,
+  in order, with their own blurbs; a name that is not a public repo fails the build), followed
+  by every other public, non-fork, non-archived repo for the owner, most recently pushed
+  first. Pin or hide names there too.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
-  `iTime` / `iMouse`; tiles initialize lazily and pause offscreen). Register new ones in
-  `src/config/shaders.ts`. The home-page poster is a static capture in
-  `src/assets/shaders/`.
+  `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
+  its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
+  context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
+  Fullscreen button and the section has "Random shader" — both open a fullscreen stage
+  (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
+  Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
+  on `Layout` names it per page — on by default (off under `prefers-reduced-motion`),
+  toggled by "Shaders: on/off" at the end of the nav, remembered per browser in
+  `localStorage`.
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Empty sections render a placeholder line.
@@ -57,7 +64,7 @@ src/
   config/       site.ts — name, nav, external links, software, playlists; shaders.ts
   lib/          github.ts, opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
-  assets/       shader posters, memes/, cats/ (processed by astro:assets)
+  assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon)
 infra/          AWS CDK app (TypeScript)

@@ -1,24 +1,51 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
 import { site, software } from '../config/site';
 import { loadRepos } from '../lib/github';
 
 const repos = await loadRepos(software.owner, process.env.GITHUB_TOKEN, software);
+const highlights = software.highlights.map((highlight) => {
+  const repo = repos.find((candidate) => candidate.name === highlight.name);
+  if (!repo) throw new Error(`Highlighted repo "${highlight.name}" is not a public, non-fork repo of ${software.owner}`);
+  return { ...repo, description: highlight.blurb };
+});
+const highlighted = new Set(software.highlights.map((highlight) => highlight.name));
+const rest = repos.filter((repo) => !highlighted.has(repo.name));
 const monthYear = (iso: string): string =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 ---
 
-<Layout
-  heading="Software"
-  lede="Everything public on GitHub, most recently pushed first — packages, infrastructure, demos, and toys."
->
+<Layout background="circuit" heading="Software" lede="The repos worth starting from, then everything else public on GitHub.">
   <a slot="aside" class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">
     GitHub <span aria-hidden="true">↗</span>
   </a>
 
-  <ol class="rows rows--stack mt-10 [--rows-key:16rem]">
+  <Section title="Highlights">
+    <ul class="card-grid">
+      {
+        highlights.map((repo) => (
+          <li class="contents">
+            <a class="card" href={repo.html_url} target="_blank" rel="noopener noreferrer">
+              <h3 class="text-h3 font-semibold">
+                {repo.name} <span aria-hidden="true">↗</span>
+              </h3>
+              <p class="text-small text-muted">{repo.description}</p>
+              <p class="label mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-2">
+                {repo.language && <span>{repo.language}</span>}
+                {repo.pushed_at && <time datetime={repo.pushed_at}>{monthYear(repo.pushed_at)}</time>}
+              </p>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section title="Everything else">
+  <ol class="rows rows--stack [--rows-key:16rem]">
     {
-      repos.map((repo) => (
+      rest.map((repo) => (
         <li>
           <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <a class="font-semibold" href={repo.html_url} target="_blank" rel="noopener noreferrer">
@@ -41,4 +68,5 @@ const monthYear = (iso: string): string =>
       ))
     }
   </ol>
+  </Section>
 </Layout>
