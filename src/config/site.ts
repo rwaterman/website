@@ -59,6 +59,7 @@ export const site = {
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
   { label: 'Resume', href: site.links.resume },
+  { label: 'Links', href: '/links' },
   {
     label: 'Notes',
     href: site.links.notes,
@@ -71,7 +72,6 @@ export const nav: NavLink[] = [
     external: true,
     blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
   },
-  { label: 'Links', href: '/links' },
 ];
 
 export const socials: SocialLink[] = [
