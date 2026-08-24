@@ -40,9 +40,7 @@ Site identity, nav, external links, and playlists live in `src/config/site.ts`.
   Fullscreen button and the section has "Random shader" — both open a fullscreen stage
   (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
-  on `Layout` names it per page — on by default (off under `prefers-reduced-motion`),
-  toggled by "Shaders: on/off" at the end of the nav, remembered per browser in
-  `localStorage`.
+  on `Layout` names it per page (off under `prefers-reduced-motion`).
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Sections without content are not rendered.

@@ -8,8 +8,8 @@
  *
  * Each tile (`data-shader="id"`) holds a <canvas>, a <code data-shader-source="id"> with a
  * Shadertoy-style fragment body (`void mainImage(out vec4 fragColor, in vec2 fragCoord)`),
- * a [data-play] button (labels via data-label-play/-pause), a [data-error] element, and
- * optionally a [data-fullscreen] button. A tile that starts with `data-paused` renders
+ * a [data-error] element, and optionally [data-play] (labels via data-label-play/-pause)
+ * and [data-fullscreen] buttons. A tile that starts with `data-paused` renders
  * nothing until played. Uniforms: iResolution, iTime, iMouse. Rendering pauses offscreen,
  * in hidden tabs, and under prefers-reduced-motion (one frame, then Play).
  * [data-random-shader] buttons open the stage on a random shader.
@@ -48,7 +48,7 @@ interface Target {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   errorOut: HTMLElement;
-  playButton: HTMLButtonElement;
+  playButton: HTMLButtonElement | null;
   maxWidth: number;
   shaderId: string;
   mouse: [number, number, number, number];
@@ -196,9 +196,11 @@ function init(): void {
 
   const setPaused = (target: Target, paused: boolean): void => {
     target.paused = paused;
-    const { labelPlay = 'Play', labelPause = 'Pause' } = target.playButton.dataset;
-    target.playButton.textContent = paused ? labelPlay : labelPause;
-    target.playButton.setAttribute('aria-pressed', String(!paused));
+    if (target.playButton) {
+      const { labelPlay = 'Play', labelPause = 'Pause' } = target.playButton.dataset;
+      target.playButton.textContent = paused ? labelPlay : labelPause;
+      target.playButton.setAttribute('aria-pressed', String(!paused));
+    }
     target.root.toggleAttribute('data-paused', paused);
     if (!paused) schedule();
   };
@@ -208,8 +210,8 @@ function init(): void {
     const errorOut = root.querySelector<HTMLElement>('[data-error]');
     const playButton = root.querySelector<HTMLButtonElement>('[data-play]');
     const context = canvas?.getContext('2d', { alpha: false });
-    if (!canvas || !context || !errorOut || !playButton) {
-      throw new Error('Shader target is missing its canvas, error, or play element');
+    if (!canvas || !context || !errorOut) {
+      throw new Error('Shader target is missing its canvas or error element');
     }
     const target: Target = {
       root,
@@ -225,7 +227,7 @@ function init(): void {
       needsFrame: !root.hasAttribute('data-paused'),
     };
 
-    playButton.addEventListener('click', () => setPaused(target, !target.paused));
+    playButton?.addEventListener('click', () => setPaused(target, !target.paused));
 
     canvas.addEventListener('pointermove', (event) => {
       const rect = canvas.getBoundingClientRect();

@@ -151,6 +151,10 @@
     @apply mt-[clamp(3.5rem,8vw,6rem)];
   }
 
+  main[data-compact] .section {
+    @apply mt-[clamp(2rem,3.5vw,3rem)];
+  }
+
   .section-head {
     @apply mb-6 flex items-baseline gap-4;
   }

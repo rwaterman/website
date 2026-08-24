@@ -37,10 +37,10 @@ const externalLinks = {
 
 export const site = {
   name: 'Rick Waterman',
-  role: 'Lead Cloud Architect',
+  role: 'Cloud Solutions Architect & Engineer',
   /** Used for <title>, meta description, and Open Graph tags. */
   description:
-    'Rick Waterman — Lead Cloud Architect. 10+ years building backend and cloud systems, focused on AWS serverless architecture and data platforms.',
+    'Rick Waterman — Cloud Solutions Architect & Engineer. 10+ years building backend and cloud systems, focused on AWS serverless architecture and data platforms.',
   intro:
     'I lead cloud architecture and backend delivery — AWS serverless systems, event-driven services, and data platforms built for long-term ownership. Ten-plus years across backend and cloud engineering, AWS certified, based in Vancouver, WA in the Portland, OR metro.',
   links: {
