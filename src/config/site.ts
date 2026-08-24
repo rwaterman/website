@@ -59,19 +59,19 @@ export const nav: NavLink[] = [
   { label: 'Resume', href: site.links.resume },
   { label: 'Software', href: '/software' },
   {
-    label: 'GenAI Blog',
-    href: site.links.blog,
-    external: true,
-    blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
-  },
-  {
     label: 'Notes',
     href: site.links.notes,
     external: true,
     blurb: 'References, implementation notes, and technical docs.',
   },
-  { label: 'Links', href: '/links' },
+  {
+    label: 'Blog',
+    href: site.links.blog,
+    external: true,
+    blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
+  },
   { label: 'Fun', href: '/fun' },
+  { label: 'Links', href: '/links' },
 ];
 
 export const socials: SocialLink[] = [

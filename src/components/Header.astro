@@ -17,7 +17,7 @@ const isCurrent = (href: string) =>
 ---
 
 <header class="border-b border-rule bg-bg/85">
-  <div class="container-site grid gap-y-3 py-4 lg:flex lg:items-center lg:justify-between lg:gap-x-8 lg:py-5">
+  <div class="container-site grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 py-4 lg:flex lg:gap-x-8 lg:py-5">
     <a class="flex items-center gap-3 no-underline" href="/">
       <svg class="h-7 w-7 shrink-0" viewBox="0 0 64 64" aria-hidden="true">
         <rect width="64" height="64" rx="6" class="fill-text" />
@@ -35,7 +35,7 @@ const isCurrent = (href: string) =>
       <span class="font-display text-[1.35rem] font-bold uppercase leading-none tracking-[0.02em]">{site.name}</span>
     </a>
 
-    <nav class="min-w-0" aria-label="Primary">
+    <nav class="col-span-2 min-w-0 lg:col-auto lg:ml-auto" aria-label="Primary">
       <ul
         class="strip max-w-full font-mono text-[0.8rem] uppercase tracking-[0.1em] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:[mask-image:none]"
       >
@@ -54,32 +54,32 @@ const isCurrent = (href: string) =>
             </li>
           ))
         }
-        {
-          backgroundShader && (
-            <li data-shader={backgroundShader.id} data-background>
-              <canvas aria-hidden="true" />
-              <button
-                type="button"
-                data-play
-                data-label-play="Shaders: off"
-                data-label-pause="Shaders: on"
-                class="inline-block cursor-pointer border-b-2 border-transparent py-1 whitespace-nowrap text-muted hover:text-text"
-                aria-pressed="true"
-              >
-                Shaders: on
-              </button>
-              <p
-                data-error
-                hidden
-                class="fixed inset-x-0 top-0 z-40 m-4 bg-bg/90 p-4 font-mono text-[0.8rem] tracking-normal whitespace-pre-wrap normal-case text-accent"
-              />
-              <div hidden>
-                <code data-shader-source={backgroundShader.id}>{backgroundShader.source}</code>
-              </div>
-            </li>
-          )
-        }
       </ul>
     </nav>
+    {
+      backgroundShader && (
+        <div class="col-start-2 row-start-1 lg:col-auto lg:row-auto" data-shader={backgroundShader.id} data-background>
+          <canvas aria-hidden="true" />
+          <button
+            type="button"
+            data-play
+            data-label-play="Shaders: off"
+            data-label-pause="Shaders: on"
+            class="chip cursor-pointer hover:border-accent hover:text-text aria-pressed:border-accent aria-pressed:text-text"
+            aria-pressed="true"
+          >
+            Shaders: on
+          </button>
+          <p
+            data-error
+            hidden
+            class="fixed inset-x-0 top-0 z-40 m-4 bg-bg/90 p-4 font-mono text-[0.8rem] tracking-normal whitespace-pre-wrap normal-case text-accent"
+          />
+          <div hidden>
+            <code data-shader-source={backgroundShader.id}>{backgroundShader.source}</code>
+          </div>
+        </div>
+      )
+    }
   </div>
 </header>
