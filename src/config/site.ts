@@ -11,11 +11,20 @@ export interface NavLink {
   href: string;
   /** External links open in a new tab and render an arrow indicator. */
   external?: boolean;
+  /** One-line description, shown wherever the link is listed with context. */
+  blurb?: string;
 }
 
 export interface SocialLink {
   label: string;
   href: string;
+}
+
+export interface Playlist {
+  title: string;
+  href: string;
+  /** Where it lives — Apple Music, Spotify, SoundCloud. */
+  service: string;
 }
 
 const isDevDeploy = process.env.SITE === 'https://dev.rickwaterman.com';
@@ -45,12 +54,37 @@ export const site = {
 
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
+  { label: 'Projects', href: '/projects' },
+  { label: 'Fun', href: '/fun' },
+  { label: 'Feeds', href: '/feeds' },
   { label: 'Resume', href: site.links.resume },
   { label: 'Links', href: '/links' },
-  { label: 'Blog', href: site.links.blog, external: true },
-  { label: 'Notes', href: site.links.notes, external: true },
+  {
+    label: 'GenAI Blog',
+    href: site.links.blog,
+    external: true,
+    blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
+  },
+  {
+    label: 'Notes',
+    href: site.links.notes,
+    external: true,
+    blurb: 'References, implementation notes, and technical docs.',
+  },
 ];
 
 export const socials: SocialLink[] = [
   { label: 'GitHub', href: site.links.github },
 ];
+
+/** GitHub repos listed on /projects. Fetched at build time; see src/lib/github.ts. */
+export const projects = {
+  owner: 'rwaterman',
+  /** Shown first, in this order. */
+  pinned: [] as string[],
+  /** Never shown (the profile README repo, etc.). */
+  hidden: ['rwaterman'],
+};
+
+/** Music playlists listed on /fun. Empty until links are added. */
+export const playlists: Playlist[] = [];

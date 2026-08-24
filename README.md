@@ -1,15 +1,18 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A small static site (home, links, resume, 404) built with [Astro](https://astro.build/) and
-Tailwind CSS, deployed to S3 + CloudFront with AWS CDK. It is the hub for the sibling
-[`blog`](https://github.com/rwaterman/blog) (Hugo) and
+A static site (bio, projects, fun, feeds, links, resume, 404) built with
+[Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
+It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
 share infrastructure owned by this repo.
 
 ## Requirements
 
 - Node.js ≥ 22.12 (`engines` in `package.json`)
+- Network access at build time: `/projects` and the home page list public repos from the
+  GitHub API. Set `GITHUB_TOKEN` (any token; `gh auth token` works) to lift the
+  unauthenticated 60 req/hour limit. A failed request fails the build on purpose.
 - AWS CLI + CDK bootstrap in `us-west-2` and `us-east-1` for infra work
 
 ## Develop
@@ -17,24 +20,45 @@ share infrastructure owned by this repo.
 ```sh
 npm ci
 npm run dev        # http://localhost:4321
+npm run check      # astro check (types in .astro and .ts)
+npm test           # node:test for src/lib
 npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 ```
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs,
 the sitemap, and to point the blog/notes nav links at the matching dev subdomains.
-Site identity, nav, and social links live in `src/config/site.ts`.
+Site identity, nav, external links, and the `/projects` pin/hide lists live in
+`src/config/site.ts`.
+
+## Content
+
+- **Projects** — every public, non-fork, non-archived repo for the configured owner,
+  most recently pushed first. Pin or hide names in `projects` in `src/config/site.ts`.
+- **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
+  `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
+  `iTime` / `iMouse`; tiles initialize lazily and pause offscreen). Register new ones in
+  `src/config/shaders.ts`. The home-page poster is a static capture in
+  `src/assets/shaders/`.
+- **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
+  `src/assets/cats/` (alt text comes from the filename); add playlist links to
+  `playlists` in `src/config/site.ts`. Empty sections render a placeholder line.
+- **Feeds** — `public/feeds.opml` is the single copy: parsed at build time for the page
+  and served as-is for download. Replace the file to update the list.
 
 ## Layout
 
 ```
 src/
-  pages/        index, links, resume, 404
-  components/   Header, Footer
+  pages/        index, projects, fun, feeds, links, resume, 404
+  components/   Header, Footer, Section
   layouts/      Layout.astro
-  config/       site.ts — name, nav, external links
-  styles/       global.css (Tailwind 4)
-public/         static assets (resume PDF, favicon)
+  config/       site.ts — name, nav, external links, projects, playlists; shaders.ts
+  lib/          github.ts, opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
+  shaders/      *.frag fragment shader bodies
+  assets/       shader posters, memes/, cats/ (processed by astro:assets)
+  styles/       global.css (Tailwind 4 tokens + component classes)
+public/         static assets (resume PDF, feeds.opml, og.png, favicon)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
   lib/shared-stack.ts   account-wide singletons (us-west-2)
@@ -109,7 +133,8 @@ Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID
 `HOSTED_ZONE_ID`; no long-lived AWS keys exist.
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
-  `workflow_dispatch` with an `env` choice. Builds with the env's `SITE`, writes a
+  `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
+  with the env's `SITE` (and the workflow's `GITHUB_TOKEN` for the repo list), writes a
   `Disallow: /` `robots.txt` on dev, assumes `website-content-<env>`, syncs `dist/` to S3
   (hashed `_astro/*` assets cached immutable for a year, everything else
   `must-revalidate`), then invalidates `/*`.

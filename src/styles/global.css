@@ -8,7 +8,7 @@
 @import '@fontsource/ibm-plex-mono/latin-500.css';
 
 /* Design tokens. Registering them under @theme makes Tailwind generate matching
-   utilities (bg-surface, text-muted, border-rule, font-display, …). */
+   utilities (bg-surface, text-muted, border-rule, font-display, text-h2, max-w-site, …). */
 @theme {
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'IBM Plex Sans Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
@@ -16,18 +16,39 @@
 
   --color-bg: #eceef1;
   --color-surface: #f6f7f9;
+  --color-surface-2: #ffffff;
   --color-text: #15181c;
   --color-muted: #5c636b;
   --color-rule: #c5cad1;
   --color-rule-strong: #8d949c;
   --color-accent: #b3261e;
   --color-accent-contrast: #ffffff;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  --color-grid: color-mix(in oklab, var(--color-text) 7%, transparent);
+
+  --container-site: 64rem;
+
+  --text-display: min(13cqw, 7.5rem);
+  --text-display--line-height: 0.9;
+  --text-h1: clamp(2.5rem, 6vw, 4rem);
+  --text-h1--line-height: 0.95;
+  --text-h2: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
+  --text-h2--line-height: 1.05;
+  --text-h3: 1.2rem;
+  --text-h3--line-height: 1.25;
+  --text-lede: clamp(1.05rem, 1.6vw, 1.2rem);
+  --text-lede--line-height: 1.55;
+  --text-small: 0.9rem;
+  --text-small--line-height: 1.45;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: #15181b;
     --color-surface: #1c2024;
+    --color-surface-2: #23282d;
     --color-text: #e6e8eb;
     --color-muted: #9aa2aa;
     --color-rule: #2f353b;
@@ -44,7 +65,18 @@
   }
 
   body {
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--color-text);
     font-feature-settings: 'ss02', 'cv01';
+    background:
+      radial-gradient(var(--color-grid) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--color-bg);
+  }
+
+  main {
+    counter-reset: section;
   }
 
   h1,
@@ -81,14 +113,19 @@
     ::before,
     ::after {
       transition: none !important;
+      animation: none !important;
     }
   }
 }
 
 @layer components {
+  .container-site {
+    @apply mx-auto w-full max-w-site px-6;
+  }
+
   /* Mono eyebrow used for section names and spec-sheet keys. */
   .label {
-    @apply font-mono text-[0.75rem] font-medium uppercase tracking-[0.12em] text-muted;
+    @apply font-mono text-label font-medium uppercase tracking-[0.12em] text-muted;
   }
 
   .button {
@@ -106,5 +143,114 @@
 
   .button--ghost:hover {
     @apply border-accent bg-transparent text-accent;
+  }
+
+  /* Numbered section: "01 ▌ TITLE ────────── more →". Counter resets per <main>. */
+  .section {
+    @apply mt-[clamp(3.5rem,8vw,6rem)];
+  }
+
+  .section-head {
+    @apply mb-6 flex items-baseline gap-4;
+  }
+
+  .section-head::before {
+    counter-increment: section;
+    content: counter(section, decimal-leading-zero);
+    @apply border-r-[3px] border-accent pr-[0.6em] font-mono text-label font-medium leading-none text-accent;
+  }
+
+  .section-head > h2 {
+    @apply flex flex-1 items-center gap-4 font-display text-h2 font-bold uppercase tracking-[0.01em];
+  }
+
+  .section-head > h2::after {
+    content: '';
+    @apply mt-[0.15em] h-px flex-1 bg-rule;
+  }
+
+  /* Ruled key/value rows. Override the key column with [--rows-key:14rem]. */
+  .rows {
+    @apply border-t border-rule-strong;
+  }
+
+  .rows > * {
+    display: grid;
+    grid-template-columns: var(--rows-key, 7rem) minmax(0, 1fr);
+    column-gap: 1rem;
+    row-gap: 0.25rem;
+    padding-block: 0.75rem;
+    border-bottom: 1px solid var(--color-rule);
+  }
+
+  .rows--active {
+    @apply border-t-2 border-t-accent;
+  }
+
+  /* Collapse the key column on small screens. */
+  @media (width < 48rem) {
+    .rows--stack > * {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Hairline card grid: 1px gap + 1px ring per card reads as one shared rule. */
+  .card-grid {
+    @apply grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-px;
+  }
+
+  .card {
+    @apply flex flex-col gap-2 bg-surface p-5;
+    box-shadow: 0 0 0 1px var(--color-rule);
+  }
+
+  a.card {
+    @apply no-underline transition-shadow duration-150;
+  }
+
+  a.card:hover,
+  .card:focus-within {
+    box-shadow:
+      0 0 0 1px var(--color-accent),
+      0 0 0 4px var(--color-accent-soft);
+  }
+
+  .card--empty {
+    @apply border border-dashed border-rule-strong bg-transparent font-mono text-label font-medium uppercase tracking-[0.12em] text-muted;
+    box-shadow: none;
+  }
+
+  /* Media tile: image, canvas, or video. Override ratio with [--tile-ratio:1]. */
+  .tile {
+    @apply relative overflow-hidden bg-surface-2;
+    aspect-ratio: var(--tile-ratio, 4 / 3);
+    box-shadow: 0 0 0 1px var(--color-rule);
+  }
+
+  .tile > img,
+  .tile > canvas,
+  .tile > video {
+    @apply h-full w-full object-cover;
+  }
+
+  .chip {
+    @apply inline-block whitespace-nowrap rounded-[2px] border border-rule px-[0.55em] py-[0.2em] font-mono text-label font-medium uppercase tracking-[0.12em] text-muted;
+  }
+
+  /* Horizontally scrolling row with an edge fade; snap-scrolls, hides its scrollbar. */
+  .strip {
+    @apply -mx-1 flex gap-x-5 overflow-x-auto px-1;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 calc(100% - 3rem), transparent);
+  }
+
+  .strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .strip > * {
+    flex: none;
+    scroll-snap-align: start;
   }
 }

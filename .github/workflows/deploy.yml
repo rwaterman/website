@@ -67,9 +67,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Type-check
+        run: npm run check
+
+      - name: Test
+        run: npm test
+
       - name: Build
         env:
           SITE: ${{ steps.target.outputs.site }}
+          # Public-repo reads for /projects; the default token raises the API rate limit.
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run build
 
       - name: Block indexing on dev
