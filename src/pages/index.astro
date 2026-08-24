@@ -2,7 +2,7 @@
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
-import { site, nav, projects } from '../config/site';
+import { site, nav, software } from '../config/site';
 import { loadRepos } from '../lib/github';
 import { shaders } from '../config/shaders';
 import { parseOpml } from '../lib/opml';
@@ -32,7 +32,7 @@ const focusAreas = [
   },
 ];
 
-const repos = (await loadRepos(projects.owner, process.env.GITHUB_TOKEN, projects)).slice(0, 5);
+const repos = (await loadRepos(software.owner, process.env.GITHUB_TOKEN, software)).slice(0, 5);
 const feedGroups = parseOpml(opml);
 const elsewhere = [
   ...nav.filter((link) => link.external),
@@ -82,7 +82,7 @@ const host = (href: string): string => new URL(href).host;
     </ul>
   </Section>
 
-  <Section title="Projects" more={{ href: '/projects', label: 'All projects' }}>
+  <Section title="Software" more={{ href: '/software', label: 'All software' }}>
     <ol class="rows rows--stack [--rows-key:14rem]">
       {
         repos.map((repo) => (
@@ -121,13 +121,16 @@ const host = (href: string): string => new URL(href).host;
     </div>
   </Section>
 
-  <Section title="Feeds" more={{ href: '/feeds', label: 'All feeds' }}>
+  <Section title="Feeds" more={{ href: '/links#feeds', label: 'All feeds' }}>
     <p class="max-w-[36rem] text-muted">What I read, by folder. The OPML export imports into any feed reader.</p>
     <ul class="mt-5 flex flex-wrap gap-2">
       {
         feedGroups.map((group) => (
           <li>
-            <a class="chip no-underline hover:border-accent hover:text-text" href={`/feeds#${slugify(group.title)}`}>
+            <a
+              class="chip no-underline hover:border-accent hover:text-text"
+              href={`/links#feed-${slugify(group.title)}`}
+            >
               {group.title}
             </a>
           </li>

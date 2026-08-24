@@ -54,11 +54,8 @@ export const site = {
 
 export const nav: NavLink[] = [
   { label: 'Bio', href: '/' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'Fun', href: '/fun' },
-  { label: 'Feeds', href: '/feeds' },
   { label: 'Resume', href: site.links.resume },
-  { label: 'Links', href: '/links' },
+  { label: 'Software', href: '/software' },
   {
     label: 'GenAI Blog',
     href: site.links.blog,
@@ -71,14 +68,16 @@ export const nav: NavLink[] = [
     external: true,
     blurb: 'References, implementation notes, and technical docs.',
   },
+  { label: 'Fun', href: '/fun' },
+  { label: 'Links', href: '/links' },
 ];
 
 export const socials: SocialLink[] = [
   { label: 'GitHub', href: site.links.github },
 ];
 
-/** GitHub repos listed on /projects. Fetched at build time; see src/lib/github.ts. */
-export const projects = {
+/** GitHub repos listed on /software. Fetched at build time; see src/lib/github.ts. */
+export const software = {
   owner: 'rwaterman',
   /** Shown first, in this order. */
   pinned: [] as string[],

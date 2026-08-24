@@ -2,17 +2,37 @@
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
 import { site, nav, socials } from '../config/site';
+import { parseOpml, type FeedGroup } from '../lib/opml';
+import { slugify } from '../lib/slug';
+import opml from '../../public/feeds.opml?raw';
 
-const sections = [
+const linkSections = [
   { title: 'Sites', links: nav.filter((link) => link.external) },
   { title: 'Social', links: socials },
 ];
 const host = (href: string): string => new URL(href).host;
+
+const mine: FeedGroup = {
+  title: 'Mine',
+  feeds: [
+    { title: 'GenAI Blog', xmlUrl: `${site.links.blog}/index.xml`, htmlUrl: site.links.blog },
+    { title: 'Notes', xmlUrl: `${site.links.notes}/index.xml`, htmlUrl: site.links.notes },
+  ],
+};
+const feedGroups = [mine, ...parseOpml(opml)];
 ---
 
-<Layout heading="Links" description={`All of ${site.name}'s links in one place`} lede="Everywhere else you can find me.">
+<Layout
+  heading="Links"
+  description={`All of ${site.name}'s links in one place`}
+  lede="Everywhere else you can find me, and what I read."
+>
+  <a slot="aside" class="button button--ghost" href="/feeds.opml" download="rick-waterman-feeds.opml">
+    Download OPML <span aria-hidden="true">↓</span>
+  </a>
+
   {
-    sections.map((section) => (
+    linkSections.map((section) => (
       <Section title={section.title}>
         <ul class="rows rows--stack max-w-[40rem] [--rows-key:12rem]">
           {section.links.map((link) => (
@@ -30,4 +50,29 @@ const host = (href: string): string => new URL(href).host;
       </Section>
     ))
   }
+
+  <Section title="Feeds">
+    <p class="max-w-[36rem] text-muted">What I read, by folder. The OPML export imports into any feed reader.</p>
+    <div class="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
+      {
+        feedGroups.map((group) => (
+          <div id={`feed-${slugify(group.title)}`}>
+            <h3 class="label">{group.title}</h3>
+            <ul class="mt-2 text-small">
+              {group.feeds.map((feed) => (
+                <li class="flex items-baseline justify-between gap-3 border-b border-rule py-2">
+                  <a href={feed.htmlUrl ?? feed.xmlUrl} target="_blank" rel="noopener noreferrer">
+                    {feed.title}
+                  </a>
+                  <a class="label no-underline hover:text-text" href={feed.xmlUrl} target="_blank" rel="noopener noreferrer">
+                    rss
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+  </Section>
 </Layout>

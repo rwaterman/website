@@ -1,15 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { site, projects } from '../config/site';
+import { site, software } from '../config/site';
 import { loadRepos } from '../lib/github';
 
-const repos = await loadRepos(projects.owner, process.env.GITHUB_TOKEN, projects);
+const repos = await loadRepos(software.owner, process.env.GITHUB_TOKEN, software);
 const monthYear = (iso: string): string =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 ---
 
 <Layout
-  heading="Projects"
+  heading="Software"
   lede="Everything public on GitHub, most recently pushed first — packages, infrastructure, demos, and toys."
 >
   <a slot="aside" class="button button--ghost" href={site.links.github} target="_blank" rel="noopener noreferrer">

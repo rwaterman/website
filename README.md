@@ -1,7 +1,7 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, projects, fun, feeds, links, resume, 404) built with
+A static site (bio, resume, software, fun, links + feeds, 404) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
@@ -10,7 +10,7 @@ share infrastructure owned by this repo.
 ## Requirements
 
 - Node.js ≥ 22.12 (`engines` in `package.json`)
-- Network access at build time: `/projects` and the home page list public repos from the
+- Network access at build time: `/software` and the home page list public repos from the
   GitHub API. Set `GITHUB_TOKEN` (any token; `gh auth token` works) to lift the
   unauthenticated 60 req/hour limit. A failed request fails the build on purpose.
 - AWS CLI + CDK bootstrap in `us-west-2` and `us-east-1` for infra work
@@ -28,13 +28,13 @@ npm run preview    # serve ./dist locally
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs,
 the sitemap, and to point the blog/notes nav links at the matching dev subdomains.
-Site identity, nav, external links, and the `/projects` pin/hide lists live in
+Site identity, nav, external links, and the `/software` pin/hide lists live in
 `src/config/site.ts`.
 
 ## Content
 
-- **Projects** — every public, non-fork, non-archived repo for the configured owner,
-  most recently pushed first. Pin or hide names in `projects` in `src/config/site.ts`.
+- **Software** — every public, non-fork, non-archived repo for the configured owner,
+  most recently pushed first. Pin or hide names in `software` in `src/config/site.ts`.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`; tiles initialize lazily and pause offscreen). Register new ones in
@@ -43,17 +43,18 @@ Site identity, nav, external links, and the `/projects` pin/hide lists live in
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Empty sections render a placeholder line.
-- **Feeds** — `public/feeds.opml` is the single copy: parsed at build time for the page
-  and served as-is for download. Replace the file to update the list.
+- **Links → Feeds** — `public/feeds.opml` is the single copy: parsed at build time for
+  the Feeds section of `/links` and served as-is for download. Replace the file to update
+  the list.
 
 ## Layout
 
 ```
 src/
-  pages/        index, projects, fun, feeds, links, resume, 404
+  pages/        index, resume, software, fun, links (+ feeds), 404
   components/   Header, Footer, Section
   layouts/      Layout.astro
-  config/       site.ts — name, nav, external links, projects, playlists; shaders.ts
+  config/       site.ts — name, nav, external links, software, playlists; shaders.ts
   lib/          github.ts, opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       shader posters, memes/, cats/ (processed by astro:assets)
