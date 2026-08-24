@@ -30,7 +30,7 @@ export interface SiteEnv {
   branch: string;
   /** When true, also serve www.<apex> and 301-redirect it to the apex. */
   includeWww: boolean;
-  /** When true, deploy the contact form (Lambda + HTTP API + DynamoDB). Parked off by default. */
+  /** When true, deploy the contact form (Lambda + HTTP API + DynamoDB). */
   enableContactForm: boolean;
 }
 
@@ -41,7 +41,7 @@ export const SITE_ENVS: SiteEnv[] = [
     domainName: 'dev.rickwaterman.com',
     branch: 'develop',
     includeWww: false,
-    enableContactForm: false,
+    enableContactForm: true,
   },
   {
     id: 'Prod',
@@ -49,6 +49,6 @@ export const SITE_ENVS: SiteEnv[] = [
     domainName: ZONE_NAME,
     branch: 'main',
     includeWww: true,
-    enableContactForm: false,
+    enableContactForm: true,
   },
 ];
