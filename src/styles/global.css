@@ -14,15 +14,16 @@
   --font-display: 'IBM Plex Sans Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
 
-  --color-bg: #eceef1;
-  --color-surface: #f6f7f9;
-  --color-surface-2: #ffffff;
-  --color-text: #15181c;
-  --color-muted: #5c636b;
-  --color-rule: #c5cad1;
-  --color-rule-strong: #8d949c;
-  --color-accent: #b3261e;
-  --color-accent-contrast: #ffffff;
+  /* One dark palette for every visitor, independent of the OS color-scheme setting. */
+  --color-bg: #15181b;
+  --color-surface: #1c2024;
+  --color-surface-2: #23282d;
+  --color-text: #e6e8eb;
+  --color-muted: #9aa2aa;
+  --color-rule: #2f353b;
+  --color-rule-strong: #4d555e;
+  --color-accent: #f0685c;
+  --color-accent-contrast: #1a0907;
   --color-accent-soft: color-mix(in oklab, var(--color-accent) 14%, transparent);
   --color-grid: color-mix(in oklab, var(--color-text) 7%, transparent);
 
@@ -44,25 +45,12 @@
   --text-label--line-height: 1.2;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #15181b;
-    --color-surface: #1c2024;
-    --color-surface-2: #23282d;
-    --color-text: #e6e8eb;
-    --color-muted: #9aa2aa;
-    --color-rule: #2f353b;
-    --color-rule-strong: #4d555e;
-    --color-accent: #f0685c;
-    --color-accent-contrast: #1a0907;
-  }
-}
-
 @layer base {
   /* The page background lives on <html> so a fixed, z-index:-1 canvas can sit behind
      the body's content without the body's own background covering it. */
   html {
     -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
     background:
       radial-gradient(var(--color-grid) 1px, transparent 1px) 0 0 / 24px 24px,
       var(--color-bg);
@@ -272,15 +260,8 @@
   /* Home-page background shader: a fixed canvas behind everything, dimmed for legibility. */
   [data-background] canvas {
     @apply pointer-events-none fixed inset-0 -z-10 h-full w-full;
-    opacity: 0.35;
-    mix-blend-mode: multiply;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    [data-background] canvas {
-      opacity: 0.5;
-      mix-blend-mode: screen;
-    }
+    opacity: 0.5;
+    mix-blend-mode: screen;
   }
 
   [data-background][data-paused] canvas {

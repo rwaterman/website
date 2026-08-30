@@ -44,6 +44,8 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
   on `Layout` names it per page (off under `prefers-reduced-motion`).
+- **Theme** — dark for everyone, independent of the OS color-scheme setting. The single
+  palette lives in `src/styles/global.css`.
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Sections without content are not rendered.
