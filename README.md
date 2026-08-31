@@ -136,11 +136,14 @@ deploy workflow resolves at run time, so nothing is hardcoded in CI.
 
 A contact form (`/contact` page → HTTP API → Lambda → SES, DynamoDB per-IP rate limit,
 served through the same distribution at `/api/contact`) is enabled per environment via
-`enableContactForm` in `site-config.ts`. The recipient address lives only in the
-SecureString parameter `/website/<env>/contact-recipient` (read by the Lambda at run
-time) and in the verified SES identity — it never appears in the repo, the client, or
-build output. Swap recipients by verifying the new address in SES (us-west-2) and
-updating the parameter; no deploy needed.
+`enableContactForm` in `site-config.ts`. Mail is sent from `contact@rickwaterman.com`
+via the DKIM-signed SES domain identity in `SharedStack`. The recipient address lives only
+in the SecureString parameter `/website/<env>/contact-recipient` (read by the Lambda at run
+time) and in its verified SES identity — it never appears in the repo, the client, or
+build output. SES identities are regional: the Lambda sends from **us-west-2**, so an
+identity verified only in us-east-1 fails with `MessageRejected`. While the account is in
+the SES sandbox the recipient must be a verified identity too — swap recipients by
+verifying the new address in SES (us-west-2) and updating the parameter; no deploy needed.
 
 ## CI/CD
 

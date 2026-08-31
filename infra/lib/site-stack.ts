@@ -57,8 +57,10 @@ export class SiteStack extends cdk.Stack {
 
     // Contact form (Lambda + HTTP API + DynamoDB rate-limiter). Parked behind a per-env
     // flag: the code stays in the repo but nothing deploys until enableContactForm is set.
-    // Functional prerequisites when enabling: a verified SES sending identity and the
-    // SecureString SSM parameter `/website/<env>/contact-recipient`.
+    // Functional prerequisites when enabling: the SecureString SSM parameter
+    // `/website/<env>/contact-recipient`, the SES domain identity from SharedStack (sender),
+    // and — while the account is in the SES sandbox — the recipient address itself verified
+    // as an SES identity in this stack's region.
     let contactApi: apigwv2.HttpApi | undefined;
     let contactRecipientParameterName: string | undefined;
     if (site.enableContactForm) {
@@ -83,6 +85,7 @@ export class SiteStack extends cdk.Stack {
         logGroup: contactLogGroup,
         environment: {
           ALLOWED_ORIGIN: `https://${site.domainName}`,
+          SENDER_ADDRESS: `contact@${ZONE_NAME}`,
           RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
           RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
           // 15-minute fixed window. Per-IP cap of 1 throttles a single sender/bot to
@@ -311,7 +314,7 @@ exports.handler = async (event) => {
 
     const recipient = await getRecipient();
     await ses.send(new SendEmailCommand({
-      Source: recipient,
+      Source: process.env.SENDER_ADDRESS,
       Destination: { ToAddresses: [recipient] },
       ReplyToAddresses: [email],
       Message: {

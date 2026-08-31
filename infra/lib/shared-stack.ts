@@ -1,8 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as ses from 'aws-cdk-lib/aws-ses';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ACCOUNT, REGION, EDGE_REGION, GITHUB_REPO } from './site-config';
+import { ACCOUNT, REGION, EDGE_REGION, GITHUB_REPO, HOSTED_ZONE_ID, ZONE_NAME } from './site-config';
 
 export interface SharedStackProps extends cdk.StackProps {
   /** ARN of the shared CloudFront WebACL, owned by EdgeStack. */
@@ -15,6 +17,7 @@ export interface SharedStackProps extends cdk.StackProps {
  *  - the GitHub Actions OIDC provider (one per account; cannot live in the per-env stack)
  *  - the infra-deploy role assumed by CI to run `cdk deploy`
  *  - the SSM parameter publishing the shared WebACL ARN
+ *  - the SES domain identity the contact form sends from (one per account/region)
  */
 export class SharedStack extends cdk.Stack {
   public readonly oidcProvider: iam.IOpenIdConnectProvider;
@@ -53,6 +56,17 @@ export class SharedStack extends cdk.Stack {
     new ssm.StringParameter(this, 'SharedWebAclArnParam', {
       parameterName: '/website/shared/cloudfront-webacl-arn',
       stringValue: props.webAclArn,
+    });
+
+    // Contact form sender. Easy DKIM CNAMEs land in the zone, so mail from
+    // contact@<zone> passes the zone's strict DMARC policy. SES only trusts identities
+    // verified in the Lambda's own region (REGION) — us-east-1 identities do not count.
+    const zone = route53.PublicHostedZone.fromPublicHostedZoneAttributes(this, 'Zone', {
+      hostedZoneId: HOSTED_ZONE_ID,
+      zoneName: ZONE_NAME,
+    });
+    new ses.EmailIdentity(this, 'ContactSenderIdentity', {
+      identity: ses.Identity.publicHostedZone(zone),
     });
 
     new cdk.CfnOutput(this, 'OidcProviderArn', { value: provider.openIdConnectProviderArn });
