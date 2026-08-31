@@ -29,16 +29,19 @@ const ogImage = Astro.site ? new URL('/og.png', Astro.site).href : undefined;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Declared in HTML as well as CSS: dark-mode extensions (Noir, Dark Reader) read this tag
+         to leave an already-dark site alone. -->
+    <meta name="color-scheme" content="dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="generator" content={Astro.generator} />
 
     <title>{documentTitle}</title>
     <meta name="description" content={description} />
     {canonical && <link rel="canonical" href={canonical} />}
 
-    <meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#15181b" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#15181b" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={site.name} />

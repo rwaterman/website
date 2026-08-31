@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
+import { site } from '../config/site';
+---
+
+<Layout
+  background="cells"
+  heading="Contact"
+  description={`Contact ${site.name}`}
+  lede="Send a message and it lands in my inbox. Include your email and I'll reply there."
+>
+  <Section title="Message">
+    <form id="contact-form" class="max-w-[36rem] space-y-5" novalidate>
+      <div>
+        <label class="label" for="name">Name</label>
+        <input class="field mt-2" id="name" name="name" type="text" required maxlength="120" autocomplete="name" />
+      </div>
+      <div>
+        <label class="label" for="email">Email</label>
+        <input class="field mt-2" id="email" name="email" type="email" required maxlength="254" autocomplete="email" />
+      </div>
+      <div>
+        <label class="label" for="message">Message</label>
+        <textarea class="field mt-2" id="message" name="message" rows="7" required maxlength="4000"></textarea>
+      </div>
+      <!-- Honeypot: hidden from people, filled by bots; the API drops any submission with it set. -->
+      <div class="hidden" aria-hidden="true">
+        <label for="company">Company</label>
+        <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        <button class="button" type="submit">Send message</button>
+        <p class="text-small text-muted" id="contact-status" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+  </Section>
+</Layout>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const status = document.getElementById('contact-status') as HTMLParagraphElement;
+  const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) {
+      return;
+    }
+    void send();
+  });
+
+  async function send(): Promise<void> {
+    submit.disabled = true;
+    status.textContent = 'Sending…';
+    try {
+      // Same-origin fetch carries the aws-waf-token cookie set when this page loaded.
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form))),
+      });
+      // Only the Lambda's 200 is success; an expired token gets a WAF 202 challenge instead.
+      if (response.status === 200) {
+        form.reset();
+        status.textContent = 'Sent — thanks. I’ll get back to you.';
+      } else {
+        status.textContent = await errorMessage(response);
+      }
+    } catch {
+      status.textContent = 'Network error — please try again.';
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  async function errorMessage(response: Response): Promise<string> {
+    try {
+      const body = await response.json();
+      if (typeof body?.message === 'string') {
+        return body.message;
+      }
+    } catch {
+      // Non-JSON error body; fall through to the generic message.
+    }
+    return 'Message could not be sent — please try again later.';
+  }
+</script>

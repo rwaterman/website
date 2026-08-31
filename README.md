@@ -44,6 +44,8 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
   on `Layout` names it per page (off under `prefers-reduced-motion`).
+- **Theme** — dark for everyone, independent of the OS color-scheme setting. The single
+  palette lives in `src/styles/global.css`.
 - **Fun → Memes / Cat Photos / Playlists** — drop images into `src/assets/memes/` or
   `src/assets/cats/` (alt text comes from the filename); add playlist links to
   `playlists` in `src/config/site.ts`. Sections without content are not rendered.
@@ -63,13 +65,14 @@ src/
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-public/         static assets (resume PDF, feeds.opml, og.png, favicon)
+public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
   lib/shared-stack.ts   account-wide singletons (us-west-2)
   lib/edge-stack.ts     shared WAF (us-east-1)
   lib/cert-stack.ts     per-env ACM certificate (us-east-1)
   lib/site-stack.ts     one environment (us-west-2)
+  lib/redirect-stack.ts rickgwaterman.com → rickwaterman.com 301 (us-east-1)
   lib/site-config.ts    SITE_ENVS, account/region/zone
 .github/workflows/
   deploy.yml    build + publish content
@@ -85,18 +88,22 @@ flowchart LR
   U[Browser] --> R53[Route53<br/>A/AAAA alias] --> CF[CloudFront<br/>ACM cert + rewrite Function]
   CF --> S3
   WAF[Shared WAF WebACL] -.associated.- CF
-  CF -. /api/contact<br/>parked off .-> API[HTTP API + Lambda + DynamoDB]
+  CF -->|/api/contact| API[HTTP API + Lambda + DynamoDB] --> SES[SES email]
 ```
 
 The home region is `us-west-2`; everything that can live there does (buckets,
 distributions, roles, SSM). CloudFront requires its ACM certificate and a
 `CLOUDFRONT`-scoped WAF WebACL in `us-east-1`, so those sit in thin edge stacks and are
 passed to the home-region stacks with CDK `crossRegionReferences`. DNS is the
-`rickwaterman.com` hosted zone.
+`rickwaterman.com` hosted zone. The legacy `rickgwaterman.com` zone only holds the alias
+records of `WebsiteRedirect`, which 301s every host under it to the same host under
+`rickwaterman.com` (`blog.rickgwaterman.com/x?y` → `blog.rickwaterman.com/x?y`); that stack
+has nothing regional but its certificate, so it lives entirely in us-east-1.
 
 | Stack | Region | Contents |
 | --- | --- | --- |
 | `WebsiteEdge` | us-east-1 | Shared CloudFront WebACL |
+| `WebsiteRedirect` | us-east-1 | Legacy-domain redirect: wildcard certificate, CloudFront + Function, apex and `*` alias records |
 | `WebsiteCert<Env>` | us-east-1 | That environment's DNS-validated ACM certificate |
 | `WebsiteShared` | us-west-2 | OIDC provider, `website-infra-deploy` role, SSM param with the WebACL ARN |
 | `WebsiteSite<Env>` | us-west-2 | Bucket, distribution, DNS, content role, SSM params |
@@ -109,7 +116,7 @@ Created once and consumed by this repo **and** by `blog` and `notes` (separate C
 | --- | --- |
 | GitHub OIDC provider | One per account; all three repos' workflows authenticate through it |
 | `website-infra-deploy` role | Assumed by `infra.yml` from `develop`; can only assume the CDK bootstrap roles in both regions |
-| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group |
+| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group, silent browser challenge on `/contact*` and `/api/contact` |
 | SSM `/website/shared/cloudfront-webacl-arn` (us-west-2) | How blog/notes discover the WebACL at deploy time |
 
 ### `WebsiteSite<Env>` — one static-site environment
@@ -127,15 +134,28 @@ that may only write to that environment's bucket and invalidate its distribution
 SSM parameters `/website/<env>/bucket-name` and `/website/<env>/distribution-id` that the
 deploy workflow resolves at run time, so nothing is hardcoded in CI.
 
-A contact form (HTTP API → Lambda → SES, DynamoDB per-IP rate limit, served through the
-same distribution at `/api/contact`) is implemented but parked behind
-`enableContactForm: false` in `site-config.ts`. Enabling it needs a verified SES identity
-and the SecureString parameter `/website/<env>/contact-recipient`.
+A contact form (`/contact` page → HTTP API → Lambda → SES, served through the same
+distribution at `/api/contact`) is enabled per environment via `enableContactForm` in
+`site-config.ts`. Abuse controls, outermost first: the shared WAF issues a silent browser
+challenge when `/contact` loads, which sets a 24-hour `aws-waf-token` cookie that the
+page's same-origin POST to `/api/contact` carries (curl and scripted clients are stopped
+at the edge; the WAF JS SDK is not used because `GetWebACL` only exposes its URL for
+ATP/ACFP/Bot Control ACLs), the HTTP API stage throttles at
+1 req/s (burst 10), a hidden honeypot field drops bot fills, and the Lambda enforces
+DynamoDB counters of 5 messages/min per IP, 5/min per reply-to address, and 20/min
+globally. Mail is sent from `contact@rickwaterman.com`
+via the DKIM-signed SES domain identity in `SharedStack`. The recipient address lives only
+in the SecureString parameter `/website/<env>/contact-recipient` (read by the Lambda at run
+time) and in its verified SES identity — it never appears in the repo, the client, or
+build output. SES identities are regional: the Lambda sends from **us-west-2**, so an
+identity verified only in us-east-1 fails with `MessageRejected`. While the account is in
+the SES sandbox the recipient must be a verified identity too — swap recipients by
+verifying the new address in SES (us-west-2) and updating the parameter; no deploy needed.
 
 ## CI/CD
 
-Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID` and
-`HOSTED_ZONE_ID`; no long-lived AWS keys exist.
+Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID`,
+`HOSTED_ZONE_ID`, and `REDIRECT_HOSTED_ZONE_ID`; no long-lived AWS keys exist.
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
   `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
@@ -157,7 +177,8 @@ locally with admin credentials. Both regions must be CDK-bootstrapped:
 ```sh
 cd infra && npm ci
 npx cdk bootstrap aws://<account>/us-west-2 aws://<account>/us-east-1
-AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> npx cdk deploy --all --require-approval never
+AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> REDIRECT_HOSTED_ZONE_ID=<legacyZoneId> \
+  npx cdk deploy --all --require-approval never
 ```
 
 Deploy `WebsiteShared` before the blog/notes infra — they import its OIDC provider and
