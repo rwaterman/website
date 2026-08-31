@@ -116,7 +116,7 @@ Created once and consumed by this repo **and** by `blog` and `notes` (separate C
 | --- | --- |
 | GitHub OIDC provider | One per account; all three repos' workflows authenticate through it |
 | `website-infra-deploy` role | Assumed by `infra.yml` from `develop`; can only assume the CDK bootstrap roles in both regions |
-| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group, silent JS challenge on `/api/contact` |
+| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group, silent browser challenge on `/contact*` and `/api/contact` |
 | SSM `/website/shared/cloudfront-webacl-arn` (us-west-2) | How blog/notes discover the WebACL at deploy time |
 
 ### `WebsiteSite<Env>` — one static-site environment
@@ -130,16 +130,17 @@ Each environment stack creates: a private, encrypted S3 bucket (prod: `RETAIN`, 
 destroy + auto-empty); a CloudFront distribution with Origin Access Control and a
 viewer-request CloudFront Function (directory-index rewrite, `www` redirect on prod);
 Route53 A/AAAA alias records; a branch-scoped OIDC role
-that may only write to that environment's bucket, invalidate its distribution, and read
-the shared WebACL (for the WAF SDK URL); and
+that may only write to that environment's bucket and invalidate its distribution; and
 SSM parameters `/website/<env>/bucket-name` and `/website/<env>/distribution-id` that the
 deploy workflow resolves at run time, so nothing is hardcoded in CI.
 
 A contact form (`/contact` page → HTTP API → Lambda → SES, served through the same
 distribution at `/api/contact`) is enabled per environment via `enableContactForm` in
-`site-config.ts`. Abuse controls, outermost first: the shared WAF issues a silent JS
-challenge on `/api/contact` (the page loads the WAF SDK, whose `fetch` carries the token;
-curl and scripted clients are stopped at the edge), the HTTP API stage throttles at
+`site-config.ts`. Abuse controls, outermost first: the shared WAF issues a silent browser
+challenge when `/contact` loads, which sets a 24-hour `aws-waf-token` cookie that the
+page's same-origin POST to `/api/contact` carries (curl and scripted clients are stopped
+at the edge; the WAF JS SDK is not used because `GetWebACL` only exposes its URL for
+ATP/ACFP/Bot Control ACLs), the HTTP API stage throttles at
 1 req/s (burst 10), a hidden honeypot field drops bot fills, and the Lambda enforces
 DynamoDB counters of 5 messages/min per IP, 5/min per reply-to address, and 20/min
 globally. Mail is sent from `contact@rickwaterman.com`
@@ -157,10 +158,9 @@ Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID
 `HOSTED_ZONE_ID`, and `REDIRECT_HOSTED_ZONE_ID`; no long-lived AWS keys exist.
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
-  `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, assumes
-  `website-content-<env>`, resolves the bucket, distribution, and WAF SDK URL, builds with
-  the env's `SITE` and `WAF_INTEGRATION_URL`, writes a
-  `Disallow: /` `robots.txt` on dev, syncs `dist/` to S3
+  `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
+  with the env's `SITE`, writes a
+  `Disallow: /` `robots.txt` on dev, assumes `website-content-<env>`, syncs `dist/` to S3
   (hashed `_astro/*` assets cached immutable for a year, everything else
   `must-revalidate`), then invalidates `/*`.
 - **`infra.yml`** — on push to `develop` touching `infra/**`. Assumes
