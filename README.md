@@ -65,7 +65,7 @@ src/
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-public/         static assets (resume PDF, feeds.opml, og.png, favicon)
+public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
   lib/shared-stack.ts   account-wide singletons (us-west-2)
