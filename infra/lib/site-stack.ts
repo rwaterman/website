@@ -177,8 +177,7 @@ export class SiteStack extends cdk.Stack {
     }
 
     // Branch-scoped CI role: only this env's branch can assume it, and it can only touch
-    // this env's bucket, distribution, and SSM parameters — plus read the shared WebACL,
-    // whose SDK URL the contact page needs at build time.
+    // this env's bucket, distribution, and SSM parameters.
     const contentRole = new iam.Role(this, 'ContentDeployRole', {
       roleName: `website-content-${site.envName}`,
       description: `GitHub Actions role to deploy ${site.envName} site content`,
@@ -199,16 +198,7 @@ export class SiteStack extends cdk.Stack {
     contentRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ssm:GetParameter', 'ssm:GetParameters'],
-        resources: [
-          `arn:aws:ssm:${this.region}:${this.account}:parameter/website/${site.envName}/*`,
-          `arn:aws:ssm:${this.region}:${this.account}:parameter/website/shared/cloudfront-webacl-arn`,
-        ],
-      }),
-    );
-    contentRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['wafv2:GetWebACL'],
-        resources: [webAclArn],
+        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/website/${site.envName}/*`],
       }),
     );
 

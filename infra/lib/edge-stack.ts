@@ -10,7 +10,7 @@ const BLOCKED_COUNTRY_CODES = ['CU', 'IR', 'KP', 'SY', 'RU', 'BY'];
  * subdomain. Website, blog, and notes all point their distributions at this one ARN instead
  * of each defining their own. Rules: a sanctioned-country geo block, a site-wide per-IP
  * rate limit, the AWS IP-reputation managed group, and a silent JS challenge on the
- * contact-form API path.
+ * contact page and its API path.
  */
 export class EdgeStack extends cdk.Stack {
   public readonly webAclArn: string;
@@ -74,17 +74,35 @@ export class EdgeStack extends cdk.Stack {
           },
         },
         {
-          // Browsers get a token from the WAF SDK the contact page loads (no interstitial);
-          // scripted POSTs without one are stopped here, before the Lambda's own limits.
-          name: 'ChallengeContactApi',
+          // Loading /contact answers a silent browser challenge that sets the aws-waf-token
+          // cookie; the page's same-origin POST to /api/contact then carries it. Scripted
+          // POSTs without a token are stopped here, before the Lambda's own limits. No WAF
+          // SDK: GetWebACL only exposes an integration URL for ATP/ACFP/Bot Control ACLs.
+          name: 'ChallengeContact',
           priority: 3,
           action: { challenge: {} },
+          // Token lifetime: long enough to write a message; default is five minutes.
+          challengeConfig: { immunityTimeProperty: { immunityTime: 86400 } },
           statement: {
-            byteMatchStatement: {
-              fieldToMatch: { uriPath: {} },
-              positionalConstraint: 'EXACTLY',
-              searchString: '/api/contact',
-              textTransformations: [{ priority: 0, type: 'LOWERCASE' }],
+            orStatement: {
+              statements: [
+                {
+                  byteMatchStatement: {
+                    fieldToMatch: { uriPath: {} },
+                    positionalConstraint: 'EXACTLY',
+                    searchString: '/api/contact',
+                    textTransformations: [{ priority: 0, type: 'LOWERCASE' }],
+                  },
+                },
+                {
+                  byteMatchStatement: {
+                    fieldToMatch: { uriPath: {} },
+                    positionalConstraint: 'STARTS_WITH',
+                    searchString: '/contact',
+                    textTransformations: [{ priority: 0, type: 'LOWERCASE' }],
+                  },
+                },
+              ],
             },
           },
           visibilityConfig: {

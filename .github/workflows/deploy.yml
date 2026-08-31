@@ -73,6 +73,16 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Build
+        env:
+          SITE: ${{ steps.target.outputs.site }}
+        run: npm run build
+
+      - name: Block indexing on dev
+        if: steps.target.outputs.name == 'dev'
+        run: |
+          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/website-content-${{ steps.target.outputs.name }}
@@ -83,25 +93,8 @@ jobs:
         run: |
           BUCKET=$(aws ssm get-parameter --name "/website/${{ steps.target.outputs.name }}/bucket-name" --query Parameter.Value --output text)
           DIST=$(aws ssm get-parameter --name "/website/${{ steps.target.outputs.name }}/distribution-id" --query Parameter.Value --output text)
-          # The WAF challenge SDK URL is per-WebACL and not a CloudFormation attribute, so
-          # look it up from the ARN: arn:aws:wafv2:us-east-1:<account>:global/webacl/<name>/<id>
-          WAF_ARN=$(aws ssm get-parameter --name /website/shared/cloudfront-webacl-arn --query Parameter.Value --output text)
-          IFS=/ read -r _ _ WAF_NAME WAF_ID <<< "$WAF_ARN"
-          WAF_URL=$(aws wafv2 get-web-acl --region us-east-1 --scope CLOUDFRONT --name "$WAF_NAME" --id "$WAF_ID" --query ApplicationIntegrationURL --output text)
           echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
           echo "distribution=$DIST" >> "$GITHUB_OUTPUT"
-          echo "waf-url=$WAF_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Build
-        env:
-          SITE: ${{ steps.target.outputs.site }}
-          WAF_INTEGRATION_URL: ${{ steps.targets.outputs.waf-url }}
-        run: npm run build
-
-      - name: Block indexing on dev
-        if: steps.target.outputs.name == 'dev'
-        run: |
-          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
 
       - name: Sync to S3
         run: |
