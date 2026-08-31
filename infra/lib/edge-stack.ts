@@ -9,7 +9,8 @@ const BLOCKED_COUNTRY_CODES = ['CU', 'IR', 'KP', 'SY', 'RU', 'BY'];
  * One shared CLOUDFRONT-scoped WebACL (us-east-1 only) — a "blanket" for the apex and every
  * subdomain. Website, blog, and notes all point their distributions at this one ARN instead
  * of each defining their own. Rules: a sanctioned-country geo block, a site-wide per-IP
- * rate limit, and the AWS IP-reputation managed group.
+ * rate limit, the AWS IP-reputation managed group, and a silent JS challenge on the
+ * contact-form API path.
  */
 export class EdgeStack extends cdk.Stack {
   public readonly webAclArn: string;
@@ -69,6 +70,26 @@ export class EdgeStack extends cdk.Stack {
           visibilityConfig: {
             cloudWatchMetricsEnabled: true,
             metricName: 'shared-ip-reputation',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          // Browsers get a token from the WAF SDK the contact page loads (no interstitial);
+          // scripted POSTs without one are stopped here, before the Lambda's own limits.
+          name: 'ChallengeContactApi',
+          priority: 3,
+          action: { challenge: {} },
+          statement: {
+            byteMatchStatement: {
+              fieldToMatch: { uriPath: {} },
+              positionalConstraint: 'EXACTLY',
+              searchString: '/api/contact',
+              textTransformations: [{ priority: 0, type: 'LOWERCASE' }],
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'shared-contact-challenge',
             sampledRequestsEnabled: true,
           },
         },

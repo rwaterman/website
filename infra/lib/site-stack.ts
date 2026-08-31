@@ -57,8 +57,10 @@ export class SiteStack extends cdk.Stack {
 
     // Contact form (Lambda + HTTP API + DynamoDB rate-limiter). Parked behind a per-env
     // flag: the code stays in the repo but nothing deploys until enableContactForm is set.
-    // Functional prerequisites when enabling: a verified SES sending identity and the
-    // SecureString SSM parameter `/website/<env>/contact-recipient`.
+    // Functional prerequisites when enabling: the SecureString SSM parameter
+    // `/website/<env>/contact-recipient`, the SES domain identity from SharedStack (sender),
+    // and — while the account is in the SES sandbox — the recipient address itself verified
+    // as an SES identity in this stack's region.
     let contactApi: apigwv2.HttpApi | undefined;
     let contactRecipientParameterName: string | undefined;
     if (site.enableContactForm) {
@@ -83,15 +85,16 @@ export class SiteStack extends cdk.Stack {
         logGroup: contactLogGroup,
         environment: {
           ALLOWED_ORIGIN: `https://${site.domainName}`,
+          SENDER_ADDRESS: `contact@${ZONE_NAME}`,
           RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
           RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
-          // 15-minute fixed window. Per-IP cap of 1 throttles a single sender/bot to
-          // one message per window; per-reply-to mirrors it for IP-rotating reuse of an
-          // address; global is a backstop against distributed (IP-rotating) bots.
-          RATE_LIMIT_WINDOW_SECONDS: '900',
-          MAX_MESSAGES_GLOBAL: '10',
-          MAX_MESSAGES_PER_IP: '1',
-          MAX_MESSAGES_PER_REPLY_TO: '1',
+          // One-minute fixed window. Per-IP and per-reply-to caps bound a single sender
+          // (or one address reused across IPs); global is a backstop against distributed
+          // bots that clear the WAF challenge. Scripted clients never reach here.
+          RATE_LIMIT_WINDOW_SECONDS: '60',
+          MAX_MESSAGES_GLOBAL: '20',
+          MAX_MESSAGES_PER_IP: '5',
+          MAX_MESSAGES_PER_REPLY_TO: '5',
         },
       });
       contactRateLimitTable.grantReadWriteData(contactFunction);
@@ -123,8 +126,8 @@ export class SiteStack extends cdk.Stack {
         stageName: '$default',
         autoDeploy: true,
         throttle: {
-          burstLimit: 3,
-          rateLimit: 0.2,
+          burstLimit: 10,
+          rateLimit: 1,
         },
       });
     }
@@ -174,7 +177,8 @@ export class SiteStack extends cdk.Stack {
     }
 
     // Branch-scoped CI role: only this env's branch can assume it, and it can only touch
-    // this env's bucket, distribution, and SSM parameters.
+    // this env's bucket, distribution, and SSM parameters — plus read the shared WebACL,
+    // whose SDK URL the contact page needs at build time.
     const contentRole = new iam.Role(this, 'ContentDeployRole', {
       roleName: `website-content-${site.envName}`,
       description: `GitHub Actions role to deploy ${site.envName} site content`,
@@ -195,7 +199,16 @@ export class SiteStack extends cdk.Stack {
     contentRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ssm:GetParameter', 'ssm:GetParameters'],
-        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/website/${site.envName}/*`],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/website/${site.envName}/*`,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/website/shared/cloudfront-webacl-arn`,
+        ],
+      }),
+    );
+    contentRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['wafv2:GetWebACL'],
+        resources: [webAclArn],
       }),
     );
 
@@ -311,7 +324,7 @@ exports.handler = async (event) => {
 
     const recipient = await getRecipient();
     await ses.send(new SendEmailCommand({
-      Source: recipient,
+      Source: process.env.SENDER_ADDRESS,
       Destination: { ToAddresses: [recipient] },
       ReplyToAddresses: [email],
       Message: {

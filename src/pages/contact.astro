@@ -2,6 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
 import { site } from '../config/site';
+
+// AWS WAF challenges POST /api/contact; this SDK gets the token silently before we send.
+// Its URL is per-WebACL, resolved by the deploy workflow. Local builds have no WAF in front.
+const wafIntegrationUrl = process.env.WAF_INTEGRATION_URL;
+if (process.env.SITE && !wafIntegrationUrl) {
+  throw new Error('WAF_INTEGRATION_URL must be set when SITE is set');
+}
 ---
 
 <Layout
@@ -10,6 +17,7 @@ import { site } from '../config/site';
   description={`Contact ${site.name}`}
   lede="Send a message and it lands in my inbox. Include your email and I'll reply there."
 >
+  {wafIntegrationUrl && <script is:inline src={`${wafIntegrationUrl}challenge.js`}></script>}
   <Section title="Message">
     <form id="contact-form" class="max-w-[36rem] space-y-5" novalidate>
       <div>
@@ -54,12 +62,15 @@ import { site } from '../config/site';
     submit.disabled = true;
     status.textContent = 'Sending…';
     try {
-      const response = await fetch('/api/contact', {
+      const init: RequestInit = {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(new FormData(form))),
-      });
-      if (response.ok) {
+      };
+      const waf = (window as unknown as { AwsWafIntegration?: { fetch: typeof fetch } }).AwsWafIntegration;
+      const response = await (waf ? waf.fetch('/api/contact', init) : fetch('/api/contact', init));
+      // Only the Lambda's 200 is success; a WAF challenge answers 202 and is not.
+      if (response.status === 200) {
         form.reset();
         status.textContent = 'Sent — thanks. I’ll get back to you.';
       } else {
