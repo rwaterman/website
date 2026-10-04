@@ -21,7 +21,15 @@ npm run check      # astro check (types in .astro and .ts)
 npm test           # node:test for src/lib
 npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
+npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless Chromium
 ```
+
+End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
+(`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
+the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
+CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint.
+Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
+Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
 the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
@@ -65,6 +73,7 @@ src/
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
+e2e/            Playwright specs (pages, contact form, shader gallery)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
