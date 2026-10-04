@@ -41,15 +41,20 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`, currently built but not in the nav or sitemap — re-add `{ label: 'Fun', href: '/fun' }`
-  to `nav` in `src/config/site.ts` and drop the sitemap filter in `astro.config.mjs` to relaunch it)
+- **Fun** (`/fun`) — the non-work page, linked from the nav.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
   its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
   context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
-  Fullscreen button and the section has "Random shader" — both open a fullscreen stage
-  (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
+  Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
+  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `T` tour (a new
+  shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause, `Esc` close.
+  The editor recompiles the open shader as its GLSL changes and keeps the last good program
+  running when a compile fails; edits last until the page reloads. Every shader has a link,
+  `/fun#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
+  stage browses only what the filter shows. Register new shaders in `src/config/shaders.ts`
+  with an `id`, a `kind`, a title, and a caption.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
   on `Layout` names it per page (off under `prefers-reduced-motion`).
 - **Theme** — dark for everyone, independent of the OS color-scheme setting. The single
