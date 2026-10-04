@@ -21,7 +21,15 @@ npm run check      # astro check (types in .astro and .ts)
 npm test           # node:test for src/lib
 npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
+npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless Chromium
 ```
+
+End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
+(`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
+the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
+CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint.
+Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
+Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
 the sitemap. Only `SITE=https://rickwaterman.com` links the nav to the prod blog/notes;
@@ -33,15 +41,20 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`, currently built but not in the nav or sitemap — re-add `{ label: 'Fun', href: '/fun' }`
-  to `nav` in `src/config/site.ts` and drop the sitemap filter in `astro.config.mjs` to relaunch it)
+- **Fun** (`/fun`) — the non-work page, linked from the nav.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
   its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
   context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
-  Fullscreen button and the section has "Random shader" — both open a fullscreen stage
-  (`R` random, `Space` pause, `Esc` close). Register new shaders in `src/config/shaders.ts`.
+  Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
+  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `T` tour (a new
+  shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause, `Esc` close.
+  The editor recompiles the open shader as its GLSL changes and keeps the last good program
+  running when a compile fails; edits last until the page reloads. Every shader has a link,
+  `/fun#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
+  stage browses only what the filter shows. Register new shaders in `src/config/shaders.ts`
+  with an `id`, a `kind`, a title, and a caption.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
   on `Layout` names it per page (off under `prefers-reduced-motion`).
 - **Theme** — dark for everyone, independent of the OS color-scheme setting. The single
@@ -65,6 +78,7 @@ src/
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
+e2e/            Playwright specs (pages, contact form, shader gallery)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
