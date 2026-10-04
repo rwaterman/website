@@ -53,6 +53,6 @@ export const SITE_ENVS: SiteEnv[] = [
     branch: 'main',
     includeWww: true,
     enableContactForm: true,
-    enableFeed: true,
+    enableFeed: false,
   },
 ];
