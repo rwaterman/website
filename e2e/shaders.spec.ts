@@ -49,7 +49,7 @@ test.describe('/fun shader gallery', () => {
     await expect(stage.locator('[data-stage-title]')).toHaveText('Ridgelines');
     await expectShaderPainted(stage, 'stage');
 
-    await stage.locator('[data-stage-close]').click();
+    await stage.locator('[data-stage-action="close"]').click();
     await expect(stage).toBeHidden();
   });
 

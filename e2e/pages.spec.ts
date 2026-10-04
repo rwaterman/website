@@ -17,11 +17,11 @@ const pages: PageCase[] = [
   { path: '/links', title: 'Links · Rick Waterman', heading: 'Links', background: 'waves', current: 'Links' },
   { path: '/contact', title: 'Contact · Rick Waterman', heading: 'Contact', background: 'mountains', current: 'Contact' },
   { path: '/legal', title: 'Legal · Rick Waterman', heading: 'Legal', background: 'clouds' },
-  { path: '/fun', title: 'Fun · Rick Waterman', heading: 'Fun', background: 'hex' },
+  { path: '/fun', title: 'Fun · Rick Waterman', heading: 'Fun', background: 'hex', current: 'Fun' },
 ];
 const notFound: PageCase = { path: '/no-such-page', title: '404 · Rick Waterman', heading: 'Not found', background: 'blackhole' };
 
-const navLabels = ['Bio', 'Resume', 'Notes', 'AI Blog', 'Links', 'Contact'];
+const navLabels = ['Bio', 'Resume', 'Notes', 'AI Blog', 'Links', 'Fun', 'Contact'];
 const subdomainSuffix = process.env.SITE === 'https://rickwaterman.com' ? '' : '-dev';
 
 test('webgl2 is available to the test browser', async ({ page }) => {
