@@ -61,7 +61,7 @@ const filters = [
         shaders.map((shader) => (
           <li class="card scroll-mt-6 p-0" id={shader.id} data-shader={shader.id} data-kind={shader.kind}>
             <figure class="tile [--tile-ratio:16/9]">
-              <canvas aria-label={`${shader.title} shader`} />
+              <canvas class="touch-pan-y" aria-label={`${shader.title} shader`} />
               <div class="absolute right-3 bottom-3 flex gap-2">
                 <button type="button" data-play class="tile-button" aria-pressed="true">Pause</button>
                 <button type="button" data-fullscreen class="tile-button" aria-label={`${shader.title}, fullscreen`}>
@@ -130,7 +130,7 @@ const filters = [
     aria-label="Fullscreen shader"
     class="fixed inset-0 z-50 bg-black text-white outline-none"
   >
-    <canvas class="block h-full w-full" aria-label="Fullscreen shader"></canvas>
+    <canvas class="block h-full w-full touch-none" aria-label="Fullscreen shader"></canvas>
     <p
       data-error
       hidden

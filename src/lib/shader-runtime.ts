@@ -247,19 +247,25 @@ function init(): void {
 
     playButton?.addEventListener('click', () => setPaused(target, !target.paused));
 
-    canvas.addEventListener('pointermove', (event) => {
+    const track = (event: PointerEvent): void => {
       const rect = canvas.getBoundingClientRect();
       const scale = canvas.width / (rect.width || 1);
       target.mouse[0] = (event.clientX - rect.left) * scale;
       target.mouse[1] = (rect.height - (event.clientY - rect.top)) * scale;
+    };
+    canvas.addEventListener('pointermove', (event) => {
+      track(event);
       if (target.paused && target.mouse[2]) {
         target.needsFrame = true;
         schedule();
       }
     });
-    canvas.addEventListener('pointerdown', () => {
+    // Touch has no pointermove before the press, so the press position comes from this event.
+    canvas.addEventListener('pointerdown', (event) => {
+      track(event);
       target.mouse[2] = target.mouse[0];
       target.mouse[3] = target.mouse[1];
+      canvas.setPointerCapture(event.pointerId);
     });
     const release = (): void => {
       target.mouse[2] = 0;
@@ -267,6 +273,7 @@ function init(): void {
     };
     canvas.addEventListener('pointerup', release);
     canvas.addEventListener('pointerleave', release);
+    canvas.addEventListener('pointercancel', release);
 
     setPaused(target, target.paused);
     return target;
@@ -565,7 +572,7 @@ function init(): void {
   document.addEventListener('keydown', (event) => {
     if (!stageOpen || event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.target === editorInput) {
-      if (event.key === 'Escape') setEditor(false);
+      if (event.key === 'Escape') closeStage();
       return;
     }
     const action = actions[keys[event.key.toLowerCase()] ?? ''];
@@ -578,6 +585,7 @@ function init(): void {
   const openFromHash = (): void => {
     const id = location.hash.slice(1);
     if (titles.has(id)) openStage(id);
+    else if (stageOpen) closeStage();
   };
   window.addEventListener('hashchange', openFromHash);
   openFromHash();
