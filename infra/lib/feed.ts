@@ -24,6 +24,8 @@ export class Feed extends Construct {
   public readonly api: apigwv2.HttpApi;
   public readonly mediaBucket: s3.Bucket;
   public readonly tokenParameterName: string;
+  /** CloudFront must send this as `x-origin-verify`; the Lambda rejects requests without it. */
+  public readonly originVerifyValue: string;
 
   constructor(scope: Construct, id: string, props: FeedProps) {
     super(scope, id);
@@ -31,6 +33,11 @@ export class Feed extends Construct {
     const stack = cdk.Stack.of(this);
     const removalPolicy = site.envName === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
     this.tokenParameterName = `/website/${site.envName}/feed-token`;
+    // ponytail: the stack's UUID, unguessable from outside the account but readable by anyone
+    // who can describe the stack. It only stops callers bypassing the WAF through the
+    // execute-api hostname; the feed token still guards writes. Move to a rotated Secrets
+    // Manager secret if this ever has to guard more than rate limiting.
+    this.originVerifyValue = cdk.Fn.select(2, cdk.Fn.split('/', stack.stackId));
 
     const table = new dynamodb.Table(this, 'Table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
@@ -63,6 +70,7 @@ export class Feed extends Construct {
         TABLE_NAME: table.tableName,
         MEDIA_BUCKET_NAME: this.mediaBucket.bucketName,
         TOKEN_PARAMETER_NAME: this.tokenParameterName,
+        ORIGIN_VERIFY: this.originVerifyValue,
       },
     });
     table.grantReadWriteData(feedFunction);
@@ -92,7 +100,8 @@ export class Feed extends Construct {
       stageName: '$default',
       autoDeploy: true,
       // ponytail: every /feed view reaches the Lambda, bounded only by this throttle and the
-      // WAF per-IP limit. Add a short-TTL CloudFront cache policy for GET if traffic grows.
+      // WAF per-IP limit (the Lambda refuses requests that did not come through CloudFront).
+      // Add a short-TTL CloudFront cache policy for GET if traffic grows.
       throttle: { burstLimit: 20, rateLimit: 10 },
     });
   }

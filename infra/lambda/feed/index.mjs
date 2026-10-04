@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { DynamoDBClient, PutItemCommand, QueryCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, PutItemCommand, QueryCommand, GetItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { parsePost, tokenMatches, PostError } from './post.mjs';
@@ -17,6 +17,9 @@ let cachedToken;
 export async function handler(event) {
   const method = event.requestContext?.http?.method;
   try {
+    if (!tokenMatches(event.headers?.['x-origin-verify'], process.env.ORIGIN_VERIFY)) {
+      return json(403, { message: 'Forbidden' });
+    }
     if (method === 'GET') {
       return json(200, { items: await listItems() });
     }
@@ -79,12 +82,19 @@ async function createItem(post) {
         Key: imageKey,
         Body: post.image.bytes,
         ContentType: post.image.contentType,
-        CacheControl: 'public,max-age=31536000,immutable',
+        // Short on purpose: a deleted image must drop out of CloudFront and browser caches.
+        CacheControl: 'public,max-age=300',
       }),
     );
     item.imageKey = { S: imageKey };
   }
-  await dynamodb.send(new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: item }));
+  try {
+    await dynamodb.send(new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: item }));
+  } catch (error) {
+    // No row records the key, so nothing could find the uploaded image again.
+    if (item.imageKey) await deleteOrphanedImage(item.imageKey.S);
+    throw error;
+  }
   return { id };
 }
 
@@ -92,16 +102,23 @@ async function deleteItem(id) {
   if (!id) {
     throw new PostError('Missing id');
   }
-  const response = await dynamodb.send(
-    new DeleteItemCommand({
-      TableName: process.env.TABLE_NAME,
-      Key: { pk: { S: FEED_PARTITION }, sk: { S: id } },
-      ReturnValues: 'ALL_OLD',
-    }),
+  const key = { pk: { S: FEED_PARTITION }, sk: { S: id } };
+  const existing = await dynamodb.send(
+    new GetItemCommand({ TableName: process.env.TABLE_NAME, Key: key, ProjectionExpression: 'imageKey' }),
   );
-  const imageKey = response.Attributes?.imageKey?.S;
+  const imageKey = existing.Item?.imageKey?.S;
+  // Image first: if S3 fails the row survives, so a retry still knows the key.
   if (imageKey) {
     await s3.send(new DeleteObjectCommand({ Bucket: process.env.MEDIA_BUCKET_NAME, Key: imageKey }));
+  }
+  await dynamodb.send(new DeleteItemCommand({ TableName: process.env.TABLE_NAME, Key: key }));
+}
+
+async function deleteOrphanedImage(imageKey) {
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: process.env.MEDIA_BUCKET_NAME, Key: imageKey }));
+  } catch (error) {
+    console.error(JSON.stringify({ message: 'Orphaned feed image', imageKey, error: error?.name, detail: error?.message }));
   }
 }
 

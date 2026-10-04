@@ -12,6 +12,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test": "node --experimental-strip-types --test src/lib/opml.test.ts src/lib/feed.test.ts infra/lib/redirect-function.test.ts infra/lib/feed-post.test.ts",
+    "test:e2e": "playwright test",
     "astro": "astro"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.2",
     "typescript": "^6.0.3"
   }

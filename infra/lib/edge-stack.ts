@@ -21,6 +21,12 @@ export class EdgeStack extends cdk.Stack {
     const webAcl = new wafv2.CfnWebACL(this, 'SharedSiteWebAcl', {
       defaultAction: { allow: {} },
       scope: 'CLOUDFRONT',
+      // The share feed's write token crosses this ACL; keep it out of sampled requests and logs.
+      dataProtectionConfig: {
+        dataProtections: [
+          { action: 'SUBSTITUTION', field: { fieldType: 'SINGLE_HEADER', fieldKeys: ['x-feed-token'] } },
+        ],
+      },
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
         metricName: 'shared-site',

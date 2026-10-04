@@ -3,7 +3,7 @@ import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
 import { playlists } from '../config/site';
-import { shaders } from '../config/shaders';
+import { shaders, shaderKinds } from '../config/shaders';
 import { memes, cats } from '../lib/fun';
 
 // Sections without content are not rendered; drop files or links in and they appear.
@@ -11,24 +11,57 @@ const galleries = [
   { title: 'Memes', images: memes },
   { title: 'Cat Photos', images: cats },
 ].filter((gallery) => gallery.images.length > 0);
+
+const filters = [
+  { kind: 'all', label: 'All', count: shaders.length },
+  ...Object.entries(shaderKinds).map(([kind, label]) => ({
+    kind,
+    label,
+    count: shaders.filter((shader) => shader.kind === kind).length,
+  })),
+];
 ---
 
-<Layout background="hex" heading="Fun" lede="The non-work shelf — GenAI shaders first; memes, cat photos, and playlists as they land.">
+<Layout
+  background="hex"
+  heading="Fun"
+  lede={`The non-work shelf. ${shaders.length} fragment shaders running live — open one fullscreen and rewrite its GLSL while it runs.`}
+  description={`${shaders.length} GLSL fragment shaders drafted with generative AI, running live in WebGL2. Browse them fullscreen, edit the source in place, and link straight to a favorite.`}
+>
   <Section title="GenAI Shaders">
     <p class="max-w-[36rem] text-muted">
       {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
-      one fullscreen triangle, three uniforms, no libraries. Source under each tile; every tile goes fullscreen.
+      one fullscreen triangle, three uniforms, no libraries. Every tile goes fullscreen, where the source is
+      editable and recompiles as you type. Each shader has its own link.
     </p>
     <div class="mt-6 flex flex-wrap items-center gap-3">
       <button type="button" class="button" data-random-shader>Random shader, fullscreen</button>
-      <p class="label">In fullscreen: <kbd>R</kbd> random · <kbd>Space</kbd> pause · <kbd>Esc</kbd> close</p>
+      <button type="button" class="button button--ghost" data-daily-shader>Shader of the day</button>
+    </div>
+    <p class="label mt-4 leading-[2]">
+      In fullscreen: <kbd>←</kbd> <kbd>→</kbd> browse · <kbd>R</kbd> random · <kbd>T</kbd> tour · <kbd>E</kbd> edit GLSL ·
+      <kbd>S</kbd> save PNG · <kbd>C</kbd> copy link · <kbd>Space</kbd> pause · <kbd>Esc</kbd> close
+    </p>
+    <div class="mt-6 flex flex-wrap gap-2" role="group" aria-label="Filter shaders by kind">
+      {
+        filters.map((filter) => (
+          <button
+            type="button"
+            class="chip cursor-pointer hover:border-accent aria-pressed:border-accent aria-pressed:text-text"
+            data-filter={filter.kind}
+            aria-pressed={filter.kind === 'all' ? 'true' : 'false'}
+          >
+            {filter.label} · {filter.count}
+          </button>
+        ))
+      }
     </div>
     <ul class="card-grid mt-6 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
       {
         shaders.map((shader) => (
-          <li class="card p-0" data-shader={shader.id}>
+          <li class="card scroll-mt-6 p-0" id={shader.id} data-shader={shader.id} data-kind={shader.kind}>
             <figure class="tile [--tile-ratio:16/9]">
-              <canvas aria-label={`${shader.title} shader`} />
+              <canvas class="touch-pan-y" aria-label={`${shader.title} shader`} />
               <div class="absolute right-3 bottom-3 flex gap-2">
                 <button type="button" data-play class="tile-button" aria-pressed="true">Pause</button>
                 <button type="button" data-fullscreen class="tile-button" aria-label={`${shader.title}, fullscreen`}>
@@ -37,8 +70,14 @@ const galleries = [
               </div>
             </figure>
             <div class="flex flex-col gap-2 p-5">
-              <h3 class="text-h3 font-semibold">{shader.title}</h3>
-              <p class="label">{shader.caption}</p>
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h3 class="text-h3 font-semibold">{shader.title}</h3>
+                {shader.source.includes('iMouse') && <span class="chip">Drag me</span>}
+                <a class="label ml-auto no-underline hover:text-text" href={`#${shader.id}`} aria-label={`Link to ${shader.title}`}>
+                  #{shader.id}
+                </a>
+              </div>
+              <p class="label" data-caption>{shader.caption}</p>
               <p data-error hidden class="font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent" />
               <details class="mt-2">
                 <summary class="label cursor-pointer hover:text-text">GLSL source</summary>
@@ -91,19 +130,67 @@ const galleries = [
     aria-label="Fullscreen shader"
     class="fixed inset-0 z-50 bg-black text-white outline-none"
   >
-    <canvas class="block h-full w-full" aria-label="Fullscreen shader"></canvas>
+    <canvas class="block h-full w-full touch-none" aria-label="Fullscreen shader"></canvas>
     <p
       data-error
       hidden
       class="absolute inset-x-0 top-0 m-4 bg-black/80 p-4 font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent"
     >
     </p>
+    <div
+      data-stage-editor
+      hidden
+      class="absolute top-0 left-0 flex h-[60%] w-[min(44rem,100%)] flex-col bg-black/75 lg:h-[calc(100%-4.5rem)]"
+    >
+      <div class="flex items-center gap-2 border-b border-white/20 p-3">
+        <span class="label mr-auto text-white/80">GLSL · recompiles as you type</span>
+        <button type="button" class="stage-button" data-stage-action="reset">Reset</button>
+        <button type="button" class="stage-button" data-stage-action="edit">Hide</button>
+      </div>
+      <textarea
+        data-editor-input
+        aria-label="GLSL fragment source"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+        wrap="off"
+        class="min-h-0 flex-auto resize-none bg-transparent p-4 font-mono text-[0.78rem] leading-[1.5] text-white outline-none"
+      ></textarea>
+      <p
+        data-editor-error
+        hidden
+        role="status"
+        class="max-h-[35%] overflow-y-auto border-t border-accent bg-black/80 p-3 font-mono text-[0.75rem] leading-[1.5] whitespace-pre-wrap text-accent"
+      >
+      </p>
+    </div>
     <div data-stage-bar class="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 p-4 transition-opacity">
-      <span class="label mr-auto text-white/80" data-stage-title></span>
+      <p class="mr-auto min-w-0">
+        <span class="label text-white" data-stage-title></span>
+        <span class="label ml-2 hidden text-white/60 normal-case tracking-normal lg:inline" data-stage-caption></span>
+        <span class="label ml-2 text-accent" role="status" data-stage-status></span>
+      </p>
+      <button type="button" class="stage-button" data-stage-action="prev" aria-label="Previous shader"><kbd>←</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="next" aria-label="Next shader"><kbd>→</kbd></button>
       <button type="button" class="stage-button" data-play aria-pressed="true">Pause</button>
-      <button type="button" class="stage-button" data-random-shader>Random shader <kbd>R</kbd></button>
-      <button type="button" class="stage-button" data-stage-close>Close <kbd>Esc</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="random">Random <kbd>R</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="tour" aria-pressed="false">Tour <kbd>T</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="edit" aria-pressed="false">Edit <kbd>E</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="save">PNG <kbd>S</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="link">Link <kbd>C</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="close">Close <kbd>Esc</kbd></button>
     </div>
   </div>
 
+  <script>
+    const chips = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+    const tiles = document.querySelectorAll<HTMLElement>('li[data-kind]');
+    for (const chip of chips) {
+      chip.addEventListener('click', () => {
+        const kind = chip.dataset.filter;
+        for (const other of chips) other.setAttribute('aria-pressed', String(other === chip));
+        for (const tile of tiles) tile.hidden = kind !== 'all' && tile.dataset.kind !== kind;
+      });
+    }
+  </script>
 </Layout>

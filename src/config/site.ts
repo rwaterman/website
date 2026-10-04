@@ -71,13 +71,14 @@ export const nav: NavLink[] = [
     blurb: 'References, implementation notes, and technical docs.',
   },
   {
-    label: 'Blog',
+    label: 'AI Blog',
     href: site.links.blog,
     external: true,
     blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
   },
   { label: 'Links', href: '/links' },
   { label: 'Feed', href: '/feed' },
+  { label: 'Fun', href: '/fun' },
   { label: 'Contact', href: '/contact' },
 ];
 

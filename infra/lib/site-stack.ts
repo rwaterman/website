@@ -151,6 +151,7 @@ export class SiteStack extends cdk.Stack {
       additionalBehaviors['api/feed*'] = {
         origin: new origins.HttpOrigin(`${feed.api.apiId}.execute-api.${this.region}.amazonaws.com`, {
           protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+          customHeaders: { 'x-origin-verify': feed.originVerifyValue },
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
