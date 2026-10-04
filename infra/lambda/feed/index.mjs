@@ -104,7 +104,13 @@ async function deleteItem(id) {
   }
   const key = { pk: { S: FEED_PARTITION }, sk: { S: id } };
   const existing = await dynamodb.send(
-    new GetItemCommand({ TableName: process.env.TABLE_NAME, Key: key, ProjectionExpression: 'imageKey' }),
+    new GetItemCommand({
+      TableName: process.env.TABLE_NAME,
+      Key: key,
+      ProjectionExpression: 'imageKey',
+      // A stale read right after a post would miss the row and strand its image.
+      ConsistentRead: true,
+    }),
   );
   const imageKey = existing.Item?.imageKey?.S;
   // Image first: if S3 fails the row survives, so a retry still knows the key.
