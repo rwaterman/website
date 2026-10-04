@@ -27,6 +27,8 @@ test('rejects non-http urls, unknown image types, oversized images, and empty po
   assert.throws(() => parsePost({ url: 'javascript:alert(1)' }), PostError);
   assert.throws(() => parsePost({ url: 'not a url' }), /valid URL/);
   assert.throws(() => parsePost({ image: base64([0x3c, 0x73, 0x76, 0x67]) }), /JPEG, PNG, GIF, or WebP/);
+  assert.throws(() => parsePost({ image: '/9j/!!!!' }), /base64 string/);
+  assert.throws(() => parsePost({ image: jpeg.slice(0, -1) }), /base64 string/);
   assert.throws(() => parsePost({ image: Buffer.alloc(4 * 1024 * 1024 + 1, 0xff).toString('base64') }), /4 MB/);
   assert.throws(() => parsePost({ note: 'only a note' }), /url or an image/);
   assert.throws(() => parsePost(null), /JSON object/);

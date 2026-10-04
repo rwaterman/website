@@ -51,6 +51,8 @@ async function listItems() {
       ExpressionAttributeValues: { ':pk': { S: FEED_PARTITION } },
       ScanIndexForward: false,
       Limit: PAGE_SIZE,
+      // A post or a delete must show on the very next page load.
+      ConsistentRead: true,
     }),
   );
   return (response.Items ?? []).map((item) => ({
@@ -91,8 +93,7 @@ async function createItem(post) {
   try {
     await dynamodb.send(new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: item }));
   } catch (error) {
-    // No row records the key, so nothing could find the uploaded image again.
-    if (item.imageKey) await deleteOrphanedImage(item.imageKey.S);
+    await undoCreate(id, item.imageKey?.S);
     throw error;
   }
   return { id };
@@ -120,11 +121,23 @@ async function deleteItem(id) {
   await dynamodb.send(new DeleteItemCommand({ TableName: process.env.TABLE_NAME, Key: key }));
 }
 
-async function deleteOrphanedImage(imageKey) {
+/**
+ * A failed PutItem may still have committed, so the row goes first: once it is gone the
+ * image is unreferenced and safe to remove. If the row delete fails the image stays, so a
+ * row can never point at a missing object.
+ */
+async function undoCreate(id, imageKey) {
   try {
-    await s3.send(new DeleteObjectCommand({ Bucket: process.env.MEDIA_BUCKET_NAME, Key: imageKey }));
+    await dynamodb.send(
+      new DeleteItemCommand({ TableName: process.env.TABLE_NAME, Key: { pk: { S: FEED_PARTITION }, sk: { S: id } } }),
+    );
+    if (imageKey) {
+      await s3.send(new DeleteObjectCommand({ Bucket: process.env.MEDIA_BUCKET_NAME, Key: imageKey }));
+    }
   } catch (error) {
-    console.error(JSON.stringify({ message: 'Orphaned feed image', imageKey, error: error?.name, detail: error?.message }));
+    console.error(
+      JSON.stringify({ message: 'Feed post cleanup failed', id, imageKey, error: error?.name, detail: error?.message }),
+    );
   }
 }
 

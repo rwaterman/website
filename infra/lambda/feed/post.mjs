@@ -64,7 +64,12 @@ function image(value) {
   if (typeof value !== 'string') {
     throw new PostError('image must be a base64 string');
   }
-  const bytes = Buffer.from(value.replace(/\s/g, ''), 'base64');
+  const encoded = value.replace(/\s/g, '');
+  // Buffer.from skips characters it does not know, so check the syntax first.
+  if (encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
+    throw new PostError('image must be a base64 string');
+  }
+  const bytes = Buffer.from(encoded, 'base64');
   if (bytes.length > MAX_IMAGE_BYTES) {
     throw new PostError('image is larger than 4 MB');
   }
