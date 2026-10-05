@@ -1,4 +1,5 @@
 ---
+import DragonEgg from './DragonEgg.astro';
 import Year from './Year.astro';
 import { site } from '../config/site';
 ---
@@ -8,9 +9,12 @@ import { site } from '../config/site';
     class="container-site flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 py-6 font-mono text-[0.75rem] uppercase tracking-[0.1em] text-muted"
   >
     <p>© <Year /> {site.name}</p>
-    <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
-      <a class="no-underline hover:text-text" href={site.links.legal}>Legal</a>
-      <a class="no-underline hover:text-text" href="/links">Links</a>
-    </nav>
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+      {__DRAGON_ENABLED__ && <DragonEgg />}
+      <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
+        <a class="no-underline hover:text-text" href={site.links.legal}>Legal</a>
+        <a class="no-underline hover:text-text" href="/links">Links</a>
+      </nav>
+    </div>
   </div>
 </footer>

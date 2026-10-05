@@ -1,0 +1,86 @@
+---
+// Easter egg: a faint glyph in the footer that turns the site into a dragon flight (src/lib/dragon).
+// Rendered only when __DRAGON_ENABLED__ is true; see astro.config.mjs.
+---
+
+<button type="button" class="dragon-egg" data-dragon-egg aria-label="Wake the dragon" title="Here be dragons">
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <path
+      d="M3 20c3-1 5-3 6-6l-4-1 5-3c2-3 5-5 9-5l-2 3 5-2 1 3 4-1-1 4 3 2-3 2c0 4-3 7-7 8l1-3-4 2-1-3-4 3 0-4c-3 2-6 2-9 2z"
+    ></path>
+    <circle cx="20.5" cy="11.5" r="1.3" class="dragon-egg-eye"></circle>
+  </svg>
+</button>
+
+<script>
+  if (__DRAGON_ENABLED__) {
+    const button = document.querySelector<HTMLButtonElement>('[data-dragon-egg]');
+    const load = () => import('../lib/dragon/game');
+
+    const launch = async (origin: { x: number; y: number }): Promise<void> => {
+      try {
+        const { startDragon } = await load();
+        startDragon(origin);
+      } catch (error) {
+        console.error('The dragon easter egg failed to start; the page is unchanged.', error);
+      }
+    };
+
+    // Warm the chunk as soon as the glyph is found, so the click itself feels instant.
+    const warm = async (): Promise<void> => {
+      try {
+        await load();
+      } catch (error) {
+        console.warn('Dragon easter egg chunk failed to preload; it will load on click.', error);
+      }
+    };
+    button?.addEventListener('pointerenter', () => void warm(), { once: true });
+    button?.addEventListener('focus', () => void warm(), { once: true });
+
+    button?.addEventListener('click', (event) => {
+      // A keyboard click has no pointer position: start the fire at the glyph itself.
+      const box = button.getBoundingClientRect();
+      const keyboard = event.detail === 0;
+      void launch({
+        x: keyboard ? box.left + box.width / 2 : event.clientX,
+        y: keyboard ? box.top + box.height / 2 : event.clientY,
+      });
+    });
+  }
+</script>
+
+<style>
+  .dragon-egg {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-muted);
+    opacity: 0.16;
+    cursor: pointer;
+    transition:
+      opacity 0.4s ease,
+      color 0.4s ease,
+      filter 0.4s ease;
+  }
+
+  .dragon-egg svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+
+  .dragon-egg-eye {
+    fill: var(--color-bg);
+  }
+
+  .dragon-egg:hover,
+  .dragon-egg:focus-visible {
+    opacity: 1;
+    color: var(--color-accent);
+    filter: drop-shadow(0 0 6px var(--color-accent));
+  }
+</style>
