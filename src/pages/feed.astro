@@ -1,0 +1,109 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Section from '../components/Section.astro';
+import { site } from '../config/site';
+---
+
+<Layout
+  background="flow"
+  heading="Feed"
+  description={`Videos, links, and images ${site.name} shared`}
+  lede="Things I found worth passing on, newest first."
+>
+  <Section title="Shared">
+    <p class="text-small text-muted" id="feed-status" role="status" aria-live="polite">Loading…</p>
+    <ol class="grid max-w-[40rem] gap-6" id="feed-items"></ol>
+  </Section>
+</Layout>
+
+<script>
+  import { httpUrl, youtubeId, type FeedItem } from '../lib/feed';
+
+  const list = document.getElementById('feed-items') as HTMLOListElement;
+  const status = document.getElementById('feed-status') as HTMLParagraphElement;
+  const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+
+  void load();
+
+  async function load(): Promise<void> {
+    try {
+      const response = await fetch('/api/feed');
+      if (!response.ok) {
+        throw new Error(`GET /api/feed returned ${response.status}`);
+      }
+      const { items } = (await response.json()) as { items: FeedItem[] };
+      list.replaceChildren(...items.map(renderItem));
+      status.textContent = items.length ? '' : 'Nothing shared yet.';
+    } catch (error) {
+      console.error('Feed failed to load', error);
+      status.textContent = 'The feed could not be loaded — please try again later.';
+    }
+  }
+
+  function renderItem(item: FeedItem): HTMLLIElement {
+    const card = element('li', 'card');
+    const media = renderMedia(item);
+    if (media) {
+      card.append(media);
+    }
+    const link = renderLink(item);
+    if (link) {
+      card.append(link);
+    }
+    if (item.note) {
+      card.append(element('p', '', item.note));
+    }
+    const time = element('time', 'label', dateFormat.format(new Date(item.createdAt)));
+    time.dateTime = item.createdAt;
+    card.append(time);
+    return card;
+  }
+
+  function renderMedia(item: FeedItem): HTMLElement | undefined {
+    if (item.image) {
+      const image = element('img', 'w-full');
+      image.src = item.image;
+      image.alt = item.note ?? item.title ?? 'Shared image';
+      image.loading = 'lazy';
+      return image;
+    }
+    const videoId = youtubeId(item.url);
+    if (!videoId) {
+      return undefined;
+    }
+    const frame = element('iframe', 'aspect-video w-full');
+    frame.src = `https://www.youtube-nocookie.com/embed/${videoId}`;
+    frame.title = item.title ?? 'YouTube video';
+    frame.loading = 'lazy';
+    frame.allow = 'accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share';
+    frame.allowFullscreen = true;
+    return frame;
+  }
+
+  function renderLink(item: FeedItem): HTMLElement | undefined {
+    const url = httpUrl(item.url);
+    if (!url) {
+      return undefined;
+    }
+    const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1');
+    const anchor = element('a', 'font-semibold [overflow-wrap:anywhere]', item.title ?? url.href);
+    anchor.href = url.href;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    row.append(anchor, element('span', 'chip', url.host));
+    return row;
+  }
+
+  function element<Tag extends keyof HTMLElementTagNameMap>(
+    tag: Tag,
+    className: string,
+    text?: string,
+  ): HTMLElementTagNameMap[Tag] {
+    const node = document.createElement(tag);
+    node.className = className;
+    if (text) {
+      node.textContent = text;
+    }
+    return node;
+  }
+</script>
