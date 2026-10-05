@@ -7,8 +7,9 @@ const MOD_ARCHIVE = 'https://api.modarchive.org/**';
  * A one-pattern, four-channel ProTracker module built in memory, so the suite neither downloads
  * anyone's music nor depends on The Mod Archive being up. Speed 3 makes its 64 rows last about
  * four seconds: long enough to watch the row counter move, short enough to wait for the end.
+ * `speed` is ticks per row, at 20 ms a tick.
  */
-function tinyModule(): Buffer {
+function tinyModule(speed = 3): Buffer {
   const sampleBytes = 64;
   const header = Buffer.alloc(1084);
   header.write('e2e fixture', 0, 'latin1');
@@ -27,7 +28,7 @@ function tinyModule(): Buffer {
     const sample = period ? 1 : 0;
     pattern.set([(sample & 0xf0) | (period >> 8), period & 0xff, ((sample & 0x0f) << 4) | effect, parameter], (row * 4 + channel) * 4);
   };
-  cell(0, 0, 428, 0xf, 3);
+  cell(0, 0, 428, 0xf, speed);
   for (let row = 4; row < 64; row += 4) cell(row, (row / 4) % 4, row % 8 ? 214 : 428, 0, 0);
 
   const sample = Buffer.alloc(sampleBytes, 0x40);
@@ -35,10 +36,10 @@ function tinyModule(): Buffer {
   return Buffer.concat([header, pattern, sample]);
 }
 
-async function stubModArchive(page: Page): Promise<void> {
+async function stubModArchive(page: Page, body: Buffer = tinyModule()): Promise<void> {
   await page.route(MOD_ARCHIVE, (route) =>
     route.fulfill({
-      body: tinyModule(),
+      body,
       contentType: 'application/octet-stream',
       headers: { 'access-control-allow-origin': '*' },
     }),
@@ -170,6 +171,24 @@ test.describe('/fun tracker museum', () => {
     await toggle.click();
     await expect(status).toHaveText('Playing.');
     await expect(row).not.toHaveText(held);
+  });
+
+  test('moving the position slider seeks, and the readout follows', async ({ page }) => {
+    // Speed 31 stretches the fixture to about forty seconds, so only a seek reaches its last quarter this fast.
+    await stubModArchive(page, tinyModule(31));
+    await page.goto('/fun');
+    const museum = page.locator('[data-tracker]');
+    const seek = museum.locator('[data-tracker-seek]');
+    const row = museum.locator('[data-tracker-live="row"]');
+
+    await museum.locator('[data-tracker-toggle]').click();
+    await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
+    await expect(museum.locator('[data-tracker-time]')).toHaveText(/^0:0\d \/ 0:39$/);
+    await expect(row).toHaveText(/^0\d\/63$/);
+
+    await seek.fill('30');
+    await expect(museum.locator('[data-tracker-time]')).toHaveText(/^0:3\d \/ 0:39$/);
+    await expect.poll(async () => Number(((await row.textContent()) ?? '').slice(0, 2))).toBeGreaterThanOrEqual(48);
   });
 
   test('when a piece ends the next exhibit starts', async ({ page }) => {

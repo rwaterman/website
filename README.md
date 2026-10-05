@@ -28,7 +28,7 @@ End-to-end tests live in `e2e/` and need a one-time `npx playwright install chro
 (`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
 CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint and the
-Tracker Museum must load, play, pause, advance, and report a failed download. The tracker spec
+Tracker Museum must load, play, pause, seek, advance, and report a failed download. The tracker spec
 answers The Mod Archive's download URL with a module it builds in memory, so it never touches
 the network. Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
 Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
@@ -93,13 +93,12 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ```
 src/
-  pages/        index, resume, fun, links (+ feeds), legal, 404
+  pages/        index, resume, fun, links (+ feeds), feed, legal, 404
   components/   Header, Footer, Section, TrackerMuseum
   layouts/      Layout.astro
   config/       site.ts — name, nav, external links, playlists; shaders.ts; tracker-museum.ts
-  lib/          opml.ts, fun.ts, slug.ts, shader-runtime.ts, tracker-museum.ts, tracker-player.ts,
-                tracker.worklet.ts (+ node:test files)
-                feed.ts (+ node:test files)
+  lib/          opml.ts, feed.ts, fun.ts, slug.ts, shader-runtime.ts, tracker-museum.ts,
+                tracker-player.ts, tracker.worklet.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
