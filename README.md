@@ -54,9 +54,12 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   Vite bundles on its own (`worker.format: 'es'` in `astro.config.mjs` is there for it).
   `src/lib/tracker-player.ts` is the page-side handle and `src/lib/tracker-museum.ts` paints
   the display. When a piece ends the next exhibit starts. Under `prefers-reduced-motion` the
-  meters and the scrolling pattern stay off and the numeric readout still runs. To add an
-  exhibit, confirm composer and year against a second source and insert it in chronological
-  order; `npm test` checks the ordering and the era ranges.
+  meters and the scrolling pattern stay off and the numeric readout still runs. A panel under
+  the pattern lists the file's sample names, where composers left signatures and greetings;
+  `withholdSampleText` on an exhibit keeps it off the page for files whose text carries an
+  old postal address, phone number, e-mail address, or strong language. To add an exhibit,
+  confirm composer and year against a second source, read its sample text, and insert it by
+  era, then year; `npm test` checks the ordering and the era ranges.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into

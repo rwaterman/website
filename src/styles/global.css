@@ -328,7 +328,7 @@
   }
 
   .tracker-exhibit {
-    @apply grid w-full grid-cols-[3.25rem_minmax(0,1fr)_auto] items-baseline gap-x-3 border-b border-l-[3px]
+    @apply grid w-full grid-cols-[4rem_minmax(0,1fr)_auto] items-baseline gap-x-3 border-b border-l-[3px]
       border-rule border-l-transparent px-4 py-3 text-left;
   }
 

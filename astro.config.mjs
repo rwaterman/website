@@ -15,5 +15,8 @@ export default defineConfig({
     // 'iife' format rewrites import.meta.url to self.location, and worklets have no `self`.
     // libopenmpt's Emscripten glue imports node:module on a branch only Node takes.
     worker: { format: 'es', rolldownOptions: { external: ['node:module'] } },
+    // The dev server only meets that import when the worklet first loads; pre-bundling it then
+    // forces a page reload mid-play, and the file is a single ES module already.
+    optimizeDeps: { exclude: ['chiptune3'] },
   },
 });
