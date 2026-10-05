@@ -165,9 +165,24 @@ test.describe('/fun tracker museum', () => {
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
   });
 
-  test('a file that is not a module reports an error instead of playing', async ({ page }) => {
+  test('a retired module id, which The Mod Archive answers with an HTML page, is reported as missing', async ({ page }) => {
     await page.route(MOD_ARCHIVE, (route) =>
-      route.fulfill({ body: 'not a module', contentType: 'text/html', headers: { 'access-control-allow-origin': '*' } }),
+      route.fulfill({ body: 'Invalid ID Error', contentType: 'text/html', headers: { 'access-control-allow-origin': '*' } }),
+    );
+    await page.goto('/fun');
+    const museum = page.locator('[data-tracker]');
+    await museum.locator('[data-tracker-toggle]').click();
+    await expect(museum.locator('[data-tracker-status]')).toContainText('(no module at that address)', { timeout: 20_000 });
+    await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
+  });
+
+  test('a file libopenmpt cannot read reports an error instead of playing', async ({ page }) => {
+    await page.route(MOD_ARCHIVE, (route) =>
+      route.fulfill({
+        body: Buffer.alloc(2048, 0x55),
+        contentType: 'application/octet-stream',
+        headers: { 'access-control-allow-origin': '*' },
+      }),
     );
     await page.goto('/fun');
     const museum = page.locator('[data-tracker]');

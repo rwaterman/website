@@ -230,7 +230,7 @@ function mount(root: HTMLElement): void {
       const longestPattern = Math.max(...loaded.patterns.map((lines) => lines.length));
       setChannels(loaded.channels, Math.max(2, String(longestPattern - 1).length));
 
-      const liner = linerNotes(loaded);
+      const liner = current.withholdSampleText ? '' : linerNotes(loaded);
       samples.textContent = liner;
       notes.hidden = !liner;
       setState('playing', 'Playing.');

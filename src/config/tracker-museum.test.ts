@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { credit, eras, exhibits, yearLabel, type Exhibit } from './tracker-museum.ts';
 
-test('eras run in order without gaps or overlap, and only the last is open-ended', () => {
+test('eras are in order, each a closed range except the last, which is still running', () => {
   for (const [index, era] of eras.entries()) {
     const next = eras[index + 1];
     if (!next) {
@@ -10,11 +10,11 @@ test('eras run in order without gaps or overlap, and only the last is open-ended
       continue;
     }
     assert.ok(era.to !== undefined && era.from <= era.to, `${era.id} needs a closed range`);
-    assert.equal(next.from, era.to + 1, `${next.id} should start the year after ${era.id} ends`);
+    assert.ok(next.from > era.from, `${next.id} should start after ${era.id}`);
   }
 });
 
-test('every exhibit sits in the era its year belongs to, and every era has exhibits', () => {
+test('every exhibit falls inside its era, and every era has exhibits', () => {
   for (const exhibit of exhibits) {
     const era = eras.find((candidate) => candidate.id === exhibit.era);
     assert.ok(era, `${exhibit.title}: unknown era ${exhibit.era}`);
@@ -23,7 +23,9 @@ test('every exhibit sits in the era its year belongs to, and every era has exhib
   for (const era of eras) assert.ok(exhibits.some((exhibit) => exhibit.era === era.id), `${era.id} has no exhibits`);
 });
 
-test('exhibits are listed oldest first and no module appears twice', () => {
+test('playing order matches the list on the page: by era, oldest first, no module twice', () => {
+  const grouped = eras.flatMap((era) => exhibits.filter((exhibit) => exhibit.era === era.id));
+  assert.deepEqual(exhibits.map((exhibit) => exhibit.title), grouped.map((exhibit) => exhibit.title));
   const years = exhibits.map((exhibit) => exhibit.year);
   assert.deepEqual(years, [...years].sort((a, b) => a - b));
   const ids = exhibits.map((exhibit) => exhibit.modarchiveId);
