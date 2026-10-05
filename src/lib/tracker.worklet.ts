@@ -143,6 +143,7 @@ class TrackerProcessor extends AudioWorkletProcessor {
     // libopenmpt parses the whole file into its own structures, so the copy is not needed again.
     lib._free(file);
     if (!module) throw new Error('libopenmpt does not recognize this file as a tracker module.');
+    this.module = module;
 
     // Play through once and report `ended`; the default repeats forever.
     lib._openmpt_module_set_repeat_count(module, 0);
@@ -152,7 +153,6 @@ class TrackerProcessor extends AudioWorkletProcessor {
     this.framesSincePosition = 0;
 
     this.post({ type: 'loaded', id, info: this.describe(lib, module) });
-    this.module = module;
   }
 
   private unload(): void {

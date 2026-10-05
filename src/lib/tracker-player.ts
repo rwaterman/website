@@ -30,9 +30,11 @@ export class TrackerPlayer {
     const controller = new AbortController();
     this.fetchController = controller;
     try {
-      const node = await this.start();
+      const existingNode = this.node;
+      const node = existingNode ? await existingNode : await this.start();
       if (request !== this.request) return;
       this.send(node, { type: 'stop', id: request });
+      if (existingNode) await this.context?.resume();
 
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
