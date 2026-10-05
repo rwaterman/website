@@ -230,16 +230,17 @@ Build it once in the Shortcuts app; it then appears in every app's share sheet.
 1. New Shortcut named "Post to feed". In its details, turn on **Show in Share Sheet** and
    accept **Images** and **URLs** (Safari web pages and text can stay on as well).
 2. **Ask for Input** (Text, prompt "Note", allow an empty answer).
-3. **Get Images from Input**, then **If** *Images* **has any value**:
+3. **Get URLs from Input**, then **If** *URLs* **has any value**: **Get Contents of URL**
+   `https://rickwaterman.com/api/feed` with method POST, header `x-feed-token` set to the
+   token, and a JSON body of `url` (URLs), `title` (Shortcut Input → Name), and `note`
+   (Provided Input). Checking for a URL first matters: a Safari page also contains images,
+   and would otherwise be posted as one of them.
+4. **Otherwise**, **Get Images from Input**, then:
    1. **Resize Image** to 1600 wide, **Convert Image** to JPEG (quality about 0.8). This
       turns HEIC photos into a format the endpoint accepts and keeps them under 4 MB.
    2. **Base64 Encode** the converted image, line breaks **None**.
-   3. **Get Contents of URL** `https://rickwaterman.com/api/feed`: method POST, header
-      `x-feed-token` set to the token, request body JSON with `image` (Base64 Encoded) and
-      `note` (Provided Input).
-4. **Otherwise**: **Get URLs from Input**, then **Get Contents of URL** with the same
-   method and header, and a JSON body of `url` (URLs), `title` (Shortcut Input → Name),
-   and `note` (Provided Input).
+   3. **Get Contents of URL** with the same address, method, and header, and a JSON body
+      of `image` (Base64 Encoded) and `note` (Provided Input).
 5. **End If**, then **Show Notification** with the response so a rejected post is visible.
 
 Share from YouTube, Reddit, Safari, or Photos → **Post to feed** → type a note or leave it
