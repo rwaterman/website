@@ -49,7 +49,8 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
   `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
   No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
-  and nothing is requested before that. Playback is libopenmpt compiled to WebAssembly (from
+  and nothing is requested before that. Until Play is pressed, choosing an exhibit or using
+  Prev / Next only changes the placard. Playback is libopenmpt compiled to WebAssembly (from
   the `chiptune3` package) running in an AudioWorklet, `src/lib/tracker.worklet.ts`, which
   Vite bundles on its own (`worker.format: 'es'` in `astro.config.mjs` is there for it).
   `src/lib/tracker-player.ts` is the page-side handle and `src/lib/tracker-museum.ts` paints

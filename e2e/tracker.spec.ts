@@ -96,6 +96,41 @@ test.describe('/fun tracker museum', () => {
     expect(errors).toEqual([]);
   });
 
+  test('before Play, the list and Next only change the placard; after Play they switch pieces', async ({ page }) => {
+    const downloads: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('modarchive')) downloads.push(new URL(request.url()).searchParams.get('moduleid') ?? '');
+    });
+    await stubModArchive(page);
+    await page.goto('/fun');
+    const museum = page.locator('[data-tracker]');
+    const toggle = museum.locator('[data-tracker-toggle]');
+    const status = museum.locator('[data-tracker-status]');
+    const title = museum.locator('[data-tracker-field="title"]');
+    const exhibitButtons = museum.locator('[data-tracker-exhibit]');
+    const openingTitle = (await title.textContent()) ?? '';
+
+    await museum.locator('[data-tracker-step="1"]').click();
+    await expect(exhibitButtons.nth(1)).toHaveAttribute('aria-current', 'true');
+    await expect(title).not.toHaveText(openingTitle);
+    await exhibitButtons.nth(3).click();
+    await expect(exhibitButtons.nth(3)).toHaveAttribute('aria-current', 'true');
+    await expect(toggle).toHaveText('Play');
+    await expect(status).toHaveText('Nothing downloads until you press play.');
+    await page.waitForLoadState('networkidle');
+    expect(downloads).toEqual([]);
+
+    const chosen = (await exhibitButtons.nth(3).getAttribute('data-tracker-exhibit')) ?? '';
+    await toggle.click();
+    await expect(status).toHaveText('Playing.', { timeout: 20_000 });
+    expect(downloads).toEqual([chosen]);
+
+    await museum.locator('[data-tracker-step="1"]').click();
+    await expect(exhibitButtons.nth(4)).toHaveAttribute('aria-current', 'true');
+    await expect(status).toHaveText('Playing.', { timeout: 20_000 });
+    expect(downloads).toEqual([chosen, (await exhibitButtons.nth(4).getAttribute('data-tracker-exhibit')) ?? '']);
+  });
+
   test('with motion allowed, the pattern scrolls under a level meter per channel', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await stubModArchive(page);

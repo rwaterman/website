@@ -7,6 +7,9 @@
  * Under prefers-reduced-motion the meters and the scrolling pattern stay off and the numeric
  * readout still updates. When a piece ends the next exhibit starts, so one press of Play walks
  * the collection in order.
+ *
+ * Only Play starts a download. While nothing is playing, the list and Prev / Next change the
+ * placard and nothing else, which is what the page and the legal notice promise.
  */
 import { credit, downloadUrl, eras, exhibits, pageUrl, yearLabel, type Exhibit } from '../config/tracker-museum';
 import { TrackerPlayer } from './tracker-player';
@@ -68,6 +71,7 @@ function mount(root: HTMLElement): void {
   const seek = need<HTMLInputElement>(root, '[data-tracker-seek]');
   const time = need<HTMLElement>(root, '[data-tracker-time]');
   const status = need<HTMLElement>(root, '[data-tracker-status]');
+  const idleHint = status.textContent?.trim() ?? '';
   const pattern = need<HTMLElement>(root, '[data-tracker-pattern]');
   const head = need<HTMLElement>(root, '[data-tracker-head]');
   const meters = need<HTMLElement>(root, '[data-tracker-meters]');
@@ -266,18 +270,25 @@ function mount(root: HTMLElement): void {
     }
   };
 
+  /** Switches to an exhibit: plays it if the player is running, otherwise only shows it. */
+  const choose = (exhibit: Exhibit | undefined): void => {
+    if (!exhibit) return;
+    if (state !== 'idle') {
+      void play(exhibit);
+      return;
+    }
+    show(exhibit);
+    setState('idle', idleHint);
+  };
+
   toggle.addEventListener('click', () => void onToggle());
   for (const step of steps) {
-    step.addEventListener('click', () => {
-      const exhibit = neighbor(Number(step.dataset.trackerStep));
-      if (exhibit) void play(exhibit);
-    });
+    step.addEventListener('click', () => choose(neighbor(Number(step.dataset.trackerStep))));
   }
   for (const button of exhibitButtons) {
-    button.addEventListener('click', () => {
-      const exhibit = exhibits.find((candidate) => String(candidate.modarchiveId) === button.dataset.trackerExhibit);
-      if (exhibit) void play(exhibit);
-    });
+    button.addEventListener('click', () =>
+      choose(exhibits.find((candidate) => String(candidate.modarchiveId) === button.dataset.trackerExhibit)),
+    );
   }
   seek.addEventListener('input', () => {
     seeking = true;
