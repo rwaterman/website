@@ -11,7 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "node --experimental-strip-types --test src/lib/opml.test.ts src/config/tracker-museum.test.ts infra/lib/redirect-function.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/opml.test.ts src/config/tracker-museum.test.ts src/lib/feed.test.ts infra/lib/redirect-function.test.ts infra/lib/feed-post.test.ts",
     "test:e2e": "playwright test",
     "astro": "astro"
   },

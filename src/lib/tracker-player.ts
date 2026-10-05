@@ -19,23 +19,34 @@ export class TrackerPlayer {
   private node: Promise<AudioWorkletNode> | undefined;
   /** Id of the newest `play`; events and downloads tagged with an older one are dropped. */
   private request = 0;
+  private fetchController: AbortController | undefined;
 
   constructor(private readonly handlers: TrackerHandlers) {}
 
   /** Stops whatever is playing and starts the module at `url`. Rejects when the download fails. */
   async play(url: string): Promise<void> {
     const request = ++this.request;
-    const node = await this.start();
-    if (request !== this.request) return;
-    this.send(node, { type: 'stop' });
+    this.fetchController?.abort();
+    const controller = new AbortController();
+    this.fetchController = controller;
+    try {
+      const node = await this.start();
+      if (request !== this.request) return;
+      this.send(node, { type: 'stop', id: request });
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    // The Mod Archive answers a retired module id with 200 and an HTML error page.
-    if (response.headers.get('content-type')?.startsWith('text/html')) throw new Error('no module at that address');
-    const bytes = await response.arrayBuffer();
-    if (request !== this.request) return;
-    node.port.postMessage({ type: 'load', id: request, bytes } satisfies TrackerCommand, [bytes]);
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // The Mod Archive answers a retired module id with 200 and an HTML error page.
+      if (response.headers.get('content-type')?.startsWith('text/html')) throw new Error('no module at that address');
+      const bytes = await response.arrayBuffer();
+      if (request !== this.request) return;
+      node.port.postMessage({ type: 'load', id: request, bytes } satisfies TrackerCommand, [bytes]);
+    } catch (error) {
+      if (request !== this.request) return;
+      throw error;
+    } finally {
+      if (this.fetchController === controller) this.fetchController = undefined;
+    }
   }
 
   async pause(): Promise<void> {

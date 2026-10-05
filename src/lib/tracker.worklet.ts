@@ -44,7 +44,7 @@ export interface Position {
 export type TrackerCommand =
   | { type: 'load'; id: number; bytes: ArrayBuffer }
   | { type: 'seek'; seconds: number }
-  | { type: 'stop' };
+  | { type: 'stop'; id: number };
 
 export type TrackerEvent =
   | { type: 'loaded'; id: number; info: ModuleInfo }
@@ -109,6 +109,8 @@ class TrackerProcessor extends AudioWorkletProcessor {
 
   private async handle(command: TrackerCommand): Promise<void> {
     if (command.type === 'stop') {
+      if (command.id < this.id) return;
+      this.id = command.id;
       this.unload();
       return;
     }
@@ -118,10 +120,14 @@ class TrackerProcessor extends AudioWorkletProcessor {
       this.postPosition(this.lib);
       return;
     }
+    if (command.id < this.id) return;
+    this.id = command.id;
     try {
       this.lib ??= await libopenmptReady;
+      if (command.id !== this.id) return;
       this.load(this.lib, command.id, command.bytes);
     } catch (error) {
+      if (command.id !== this.id) return;
       this.unload();
       this.post({ type: 'error', id: command.id, message: error instanceof Error ? error.message : String(error) });
     }

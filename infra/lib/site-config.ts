@@ -32,6 +32,8 @@ export interface SiteEnv {
   includeWww: boolean;
   /** When true, deploy the contact form (Lambda + HTTP API + DynamoDB). */
   enableContactForm: boolean;
+  /** When true, deploy the share feed (Lambda + HTTP API + DynamoDB + media bucket). */
+  enableFeed: boolean;
 }
 
 export const SITE_ENVS: SiteEnv[] = [
@@ -42,6 +44,7 @@ export const SITE_ENVS: SiteEnv[] = [
     branch: 'develop',
     includeWww: false,
     enableContactForm: true,
+    enableFeed: true,
   },
   {
     id: 'Prod',
@@ -50,5 +53,6 @@ export const SITE_ENVS: SiteEnv[] = [
     branch: 'main',
     includeWww: true,
     enableContactForm: true,
+    enableFeed: true,
   },
 ];

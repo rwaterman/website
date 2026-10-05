@@ -224,7 +224,7 @@ function mount(root: HTMLElement): void {
         loaded.format,
         count(loaded.channels, 'channel'),
         count(loaded.patterns.length, 'pattern'),
-        count(Math.max(loaded.sampleNames.length, loaded.instrumentNames.length), 'sample'),
+        count(loaded.sampleNames.length, 'sample'),
         loaded.tracker,
       ]);
       const longestPattern = Math.max(...loaded.patterns.map((lines) => lines.length));
