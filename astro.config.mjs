@@ -11,5 +11,9 @@ export default defineConfig({
   integrations: [sitemap()],
   vite: {
     plugins: [tailwindcss()],
+    // src/lib/tracker.worklet.ts is bundled as a worker and loaded as an AudioWorklet. The default
+    // 'iife' format rewrites import.meta.url to self.location, and worklets have no `self`.
+    // libopenmpt's Emscripten glue imports node:module on a branch only Node takes.
+    worker: { format: 'es', rolldownOptions: { external: ['node:module'] } },
   },
 });

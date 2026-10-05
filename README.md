@@ -18,7 +18,7 @@ share infrastructure owned by this repo.
 npm ci
 npm run dev        # http://localhost:4321
 npm run check      # astro check (types in .astro and .ts)
-npm test           # node:test for src/lib
+npm test           # node:test for src/lib and src/config
 npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless Chromium
@@ -27,8 +27,10 @@ npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless 
 End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
 (`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
-CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint.
-Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
+CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint and the
+Tracker Museum must load, play, pause, advance, and report a failed download. The tracker spec
+answers The Mod Archive's download URL with a module it builds in memory, so it never touches
+the network. Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
 Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
@@ -42,6 +44,19 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 ## Content
 
 - **Fun** (`/fun`) — the non-work page, linked from the nav.
+- **Fun → Tracker Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
+  other formats libopenmpt reads) with a live display: order / pattern / row, speed and tempo,
+  a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
+  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
+  No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
+  and nothing is requested before that. Playback is libopenmpt compiled to WebAssembly (from
+  the `chiptune3` package) running in an AudioWorklet, `src/lib/tracker.worklet.ts`, which
+  Vite bundles on its own (`worker.format: 'es'` in `astro.config.mjs` is there for it).
+  `src/lib/tracker-player.ts` is the page-side handle and `src/lib/tracker-museum.ts` paints
+  the display. When a piece ends the next exhibit starts. Under `prefers-reduced-motion` the
+  meters and the scrolling pattern stay off and the numeric readout still runs. To add an
+  exhibit, confirm composer and year against a second source and insert it in chronological
+  order; `npm test` checks the ordering and the era ranges.
 - **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
@@ -71,14 +86,15 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 ```
 src/
   pages/        index, resume, fun, links (+ feeds), legal, 404
-  components/   Header, Footer, Section
+  components/   Header, Footer, Section, TrackerMuseum
   layouts/      Layout.astro
-  config/       site.ts — name, nav, external links, playlists; shaders.ts
-  lib/          opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
+  config/       site.ts — name, nav, external links, playlists; shaders.ts; tracker-museum.ts
+  lib/          opml.ts, fun.ts, slug.ts, shader-runtime.ts, tracker-museum.ts, tracker-player.ts,
+                tracker.worklet.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-e2e/            Playwright specs (pages, contact form, shader gallery)
+e2e/            Playwright specs (pages, contact form, shader gallery, tracker museum)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts

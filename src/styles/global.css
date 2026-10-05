@@ -272,6 +272,79 @@
     opacity: 0;
   }
 
+  /* Tracker Museum on /fun: the live readout, then a text-mode pattern view. Every channel
+     column is 13 characters plus a 3-character " | " separator, so the level meters above the
+     rows line up with them in `ch` units. --tracker-gutter is the row-number width in digits. */
+  .tracker-readout {
+    @apply flex flex-wrap gap-x-6 gap-y-3 font-mono;
+  }
+
+  .tracker-readout dt {
+    @apply text-label font-medium uppercase tracking-[0.12em] text-muted;
+  }
+
+  .tracker-readout dd {
+    @apply text-[1.15rem] font-medium leading-[1.3];
+  }
+
+  .tracker-pattern {
+    @apply overflow-x-auto font-mono text-[0.78rem] leading-[1.5] text-muted;
+    --tracker-gutter: 2;
+  }
+
+  .tracker-pattern > * {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .tracker-meters {
+    @apply my-1 flex;
+    padding-left: calc((var(--tracker-gutter) + 3) * 1ch);
+  }
+
+  .tracker-meters > * {
+    @apply h-1.5 flex-none bg-rule;
+    width: 13ch;
+    margin-right: 3ch;
+  }
+
+  .tracker-meters > * > * {
+    @apply block h-full origin-left bg-accent;
+    transform: scaleX(0);
+  }
+
+  .tracker-rows > * {
+    @apply block whitespace-pre;
+    min-height: 1.5em;
+  }
+
+  .tracker-rows > [data-current] {
+    @apply bg-accent-soft text-text;
+  }
+
+  .tracker-seek {
+    @apply min-w-[8rem] flex-1;
+    accent-color: var(--color-accent);
+  }
+
+  .tracker-exhibit {
+    @apply grid w-full grid-cols-[3.25rem_minmax(0,1fr)_auto] items-baseline gap-x-3 border-b border-l-[3px]
+      border-rule border-l-transparent px-4 py-3 text-left;
+  }
+
+  .tracker-exhibit:hover {
+    @apply bg-surface-2;
+  }
+
+  .tracker-exhibit[aria-current='true'] {
+    @apply border-l-accent bg-surface-2;
+  }
+
+  /* The list scrolls inside its panel, which would clip an outset focus ring. */
+  .tracker-exhibit:focus-visible {
+    outline-offset: -2px;
+  }
+
   /* Horizontally scrolling row with an edge fade; snap-scrolls, hides its scrollbar. */
   .strip {
     @apply -mx-1 flex gap-x-5 overflow-x-auto px-1;

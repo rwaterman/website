@@ -4,7 +4,7 @@ import Section from '../components/Section.astro';
 import Year from '../components/Year.astro';
 import { site } from '../config/site';
 
-const updated = '2026-08-23';
+const updated = '2026-10-05';
 const blogHost = site.links.blog.replace(/^https?:\/\//, '');
 const notesHost = site.links.notes.replace(/^https?:\/\//, '');
 ---
@@ -48,6 +48,13 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         Code in my public repositories is licensed under the license file that accompanies each repository. Quoted and
         clipped third-party material belongs to its original authors and is reproduced for reference with attribution.
       </p>
+      <p>
+        The music in the Tracker Museum on the <a href="/fun">Fun</a> page belongs to its composers, who are credited
+        beside each piece. None of the files are hosted here: each one streams from
+        <a href="https://modarchive.org/" target="_blank" rel="noopener noreferrer">The Mod Archive</a> when you play
+        it. If a piece is yours and you would rather it were not listed, <a href="/contact">tell me</a> and I will
+        remove it.
+      </p>
     </div>
   </Section>
 
@@ -68,6 +75,11 @@ const notesHost = site.links.notes.replace(/^https?:\/\//, '');
         addresses, and reject known-malicious IPs. I do not enable access logging; AWS may retain sampled request
         metadata briefly for security monitoring under the
         <a href="https://aws.amazon.com/privacy/" target="_blank" rel="noopener noreferrer">AWS Privacy Notice</a>.
+      </p>
+      <p>
+        Pressing play in the Tracker Museum on the <a href="/fun">Fun</a> page downloads that piece from The Mod
+        Archive (modarchive.org), directly from your browser. Their servers see your IP address and user agent for that
+        request. Nothing is requested from them until you press play.
       </p>
       <p>
         Links to other sites lead to services with their own privacy practices. If you contact me directly, I keep the

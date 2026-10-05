@@ -2,8 +2,10 @@
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Section from '../components/Section.astro';
+import TrackerMuseum from '../components/TrackerMuseum.astro';
 import { playlists } from '../config/site';
 import { shaders, shaderKinds } from '../config/shaders';
+import { exhibits } from '../config/tracker-museum';
 import { memes, cats } from '../lib/fun';
 
 // Sections without content are not rendered; drop files or links in and they appear.
@@ -25,9 +27,11 @@ const filters = [
 <Layout
   background="hex"
   heading="Fun"
-  lede={`The non-work shelf. ${shaders.length} fragment shaders running live — open one fullscreen and rewrite its GLSL while it runs.`}
-  description={`${shaders.length} GLSL fragment shaders drafted with generative AI, running live in WebGL2. Browse them fullscreen, edit the source in place, and link straight to a favorite.`}
+  lede={`The non-work shelf. ${exhibits.length} tracker modules from the demoscene, performed live, and ${shaders.length} fragment shaders to watch while they play — open one fullscreen and rewrite its GLSL while it runs.`}
+  description={`A museum of ${exhibits.length} classic tracker modules played live in the browser with a scrolling pattern display, and ${shaders.length} GLSL fragment shaders drafted with generative AI, running in WebGL2.`}
 >
+  <TrackerMuseum />
+
   <Section title="GenAI Shaders">
     <p class="max-w-[36rem] text-muted">
       {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
