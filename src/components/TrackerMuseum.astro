@@ -1,15 +1,16 @@
 ---
 /**
- * The Tracker Museum section of /fun: a module player with a live pattern display, and the
+ * The Mod Music File Museum tab of /fun: a module player with a live pattern display, and the
  * exhibit list it plays from. Exhibits come from src/config/tracker-museum.ts; the placard is
  * rendered here for the first one and src/lib/tracker-museum.ts rewrites it as pieces change.
+ * The Random shader button is handled by src/lib/shader-runtime.ts like any [data-random-shader].
  */
 import Section from './Section.astro';
 import { credit, eras, exhibits, pageUrl, yearLabel } from '../config/tracker-museum';
 
 const first = exhibits[0];
 const last = exhibits.at(-1);
-if (!first || !last) throw new Error('The Tracker Museum needs at least one exhibit');
+if (!first || !last) throw new Error('The Mod Music File Museum needs at least one exhibit');
 
 const wings = eras.map((era) => ({ era, pieces: exhibits.filter((exhibit) => exhibit.era === era.id) }));
 const firstEra = eras.find((era) => era.id === first.era);
@@ -19,12 +20,13 @@ if (!firstEra) throw new Error(`Exhibit "${first.title}" names an era that is no
 const PATTERN_ROWS = 13;
 ---
 
-<Section title="Tracker Museum">
+<Section title="Mod Music File Museum">
   <p class="max-w-[38rem] text-muted">
     A tracker module is the score, not the recording: a handful of short samples and a grid of notes, small enough
     for a floppy disk, performed live by the machine. The Amiga and PC demoscenes shipped music this way for a
     decade before MP3. These {exhibits.length} pieces run from {first.year} to {last.year} and play here the same
     way: libopenmpt, compiled to WebAssembly, performs every row in your browser while the pattern scrolls past.
+    Random shader opens one of the shaders fullscreen while the music keeps playing.
   </p>
   <p class="mt-3 max-w-[38rem] text-small text-muted">
     Each piece is the work of its composer. The files stream from{' '}
@@ -56,6 +58,7 @@ const PATTERN_ROWS = 13;
           Prev
         </button>
         <button type="button" class="button button--ghost" data-tracker-step="1" aria-label="Next exhibit">Next</button>
+        <button type="button" class="button button--ghost" data-random-shader>Random shader</button>
         <input
           type="range"
           class="tracker-seek"

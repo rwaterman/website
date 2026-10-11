@@ -27,8 +27,10 @@ npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless 
 End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
 (`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
-CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint and the
-Tracker Museum must load, play, pause, seek, advance, and report a failed download. The tracker spec
+CloudFront), and `/fun`, where the tabs must switch and deep-link, every shader in `src/shaders/`
+must compile and paint, the Mod Music File Museum must load, play, pause, seek, advance, and report a
+failed download, and each room must reach the other (a random module from the stage, a random shader
+over the music). The tracker spec
 answers The Mod Archive's download URL with a module it builds in memory, so it never touches
 the network. Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
 Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
@@ -43,8 +45,11 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`) — the non-work page, linked from the nav.
-- **Fun → Tracker Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
+- **Fun** (`/fun`) — the non-work page, linked from the nav. Two tabs, Mod Music File Museum
+  (default) and Shader Collection; the hash names the open tab (`/fun#shaders`) and a shader's
+  own link (`/fun#tunnel`) opens the collection. A third tab, Games, is built but empty and
+  only rendered when `FUN_GAMES=on` is set at build time.
+- **Fun → Mod Music File Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
   other formats libopenmpt reads) with a live display: order / pattern / row, speed and tempo,
   a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
   `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
@@ -60,15 +65,18 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   `withholdSampleText` on an exhibit keeps it off the page for files whose text carries an
   old postal address, phone number, e-mail address, or strong language. To add an exhibit,
   confirm composer and year against a second source, read its sample text, and insert it by
-  era, then year; `npm test` checks the ordering and the era ranges.
-- **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
+  era, then year; `npm test` checks the ordering and the era ranges. The transport's Random
+  shader button opens the shader stage over the music, and the stage's `M` key asks the museum
+  for a random module (a `tracker:random` event on `document`), so either room can start the other.
+- **Fun → Shader Collection** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
   its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
   context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
   Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
-  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `T` tour (a new
-  shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause, `Esc` close.
+  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `M` random mod,
+  `T` tour (a new shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause,
+  `Esc` close.
   The editor recompiles the open shader as its GLSL changes and keeps the last good program
   running when a compile fails; edits last until the page reloads. Every shader has a link,
   `/fun#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
@@ -102,7 +110,7 @@ src/
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-e2e/            Playwright specs (pages, contact form, shader gallery, tracker museum)
+e2e/            Playwright specs (pages, contact form, shader gallery, mod music file museum + tabs)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts

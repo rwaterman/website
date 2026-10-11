@@ -434,6 +434,18 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
   {
+    modarchiveId: 189484,
+    title: 'Victory (the race part 2)',
+    artist: 'wayfinder',
+    group: 'Farbrausch / Azure / Vacuum',
+    year: 2001,
+    era: 'impulse-net',
+    format: 'IT',
+    origin: '4th place, tracked music competition, The Party 2001 (December 2001)',
+    blurb:
+      'Farbrausch is known for 64k intros whose music is synthesized in code; this is one of its musicians at the tracker instead, sixty-four Impulse Tracker channels wide, signed in the instrument names “of azure, vacuum, farbrausch”.',
+  },
+  {
     modarchiveId: 181523,
     title: 'Nightfall Over the City',
     artist: 'Virt',

@@ -46,7 +46,7 @@ async function stubModArchive(page: Page, body: Buffer = tinyModule()): Promise<
   );
 }
 
-test.describe('/fun tracker museum', () => {
+test.describe('/fun mod music file museum', () => {
   // Reduced motion turns the page's fifty software-rendered shaders off, which is what keeps these
   // fast. The readout still runs; one test below turns motion back on for the pattern display.
   test.use({ contextOptions: { reducedMotion: 'reduce' } });
@@ -228,6 +228,68 @@ test.describe('/fun tracker museum', () => {
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('(no module at that address)', { timeout: 20_000 });
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
+  });
+
+  test('the museum tab opens first; tabs switch rooms and a shader link opens the collection', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/fun');
+    const museumTab = page.getByRole('tab', { name: 'Mod Music File Museum' });
+    const shadersTab = page.getByRole('tab', { name: 'Shader Collection' });
+    const museum = page.locator('[data-tracker]');
+    const firstTile = page.locator('li[data-shader]').first();
+    await expect(museumTab).toHaveAttribute('aria-selected', 'true');
+    await expect(museum).toBeVisible();
+    await expect(firstTile).toBeHidden();
+
+    await shadersTab.click();
+    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
+    await expect(museumTab).toHaveAttribute('aria-selected', 'false');
+    await expect(firstTile).toBeVisible();
+    await expect(museum).toBeHidden();
+    await expect(page).toHaveURL(/#shaders$/);
+
+    await page.keyboard.press('ArrowLeft');
+    await expect(museumTab).toHaveAttribute('aria-selected', 'true');
+    await expect(museumTab).toBeFocused();
+    await expect(page).toHaveURL(/#museum$/);
+
+    await page.goto('/fun#mountains');
+    await expect(page.locator('[data-stage-title]')).toHaveText('Ridgelines');
+    await page.locator('[data-stage-action="close"]').click();
+    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('li[data-shader="mountains"]')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('the stage’s M key starts a random module, and the museum’s Random shader opens the stage over it', async ({ page }) => {
+    const downloads: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('modarchive')) downloads.push(request.url());
+    });
+    // Speed 31 keeps the fixture playing for about forty seconds, so it never ends mid-test.
+    await stubModArchive(page, tinyModule(31));
+    await page.goto('/fun#shaders');
+    const stage = page.locator('[data-stage]');
+    const status = page.locator('[data-tracker-status]');
+    const title = page.locator('[data-tracker-field="title"]');
+
+    await page.locator('#shaders [data-random-shader]').click();
+    await expect(stage).toBeVisible();
+    await page.keyboard.press('m');
+    await expect(status).toHaveText('Playing.', { timeout: 20_000 });
+    expect(downloads).toHaveLength(1);
+    const playing = (await title.textContent()) ?? '';
+
+    await page.keyboard.press('Escape');
+    await expect(stage).toBeHidden();
+    await expect(status).toHaveText('Playing.');
+
+    await page.getByRole('tab', { name: 'Mod Music File Museum' }).click();
+    await page.locator('[data-tracker] [data-random-shader]').click();
+    await expect(stage).toBeVisible();
+    await expect(status).toHaveText('Playing.');
+    await expect(title).toHaveText(playing);
+    expect(downloads).toHaveLength(1);
   });
 
   test('a file libopenmpt cannot read reports an error instead of playing', async ({ page }) => {

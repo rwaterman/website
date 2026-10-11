@@ -16,7 +16,8 @@
  * one that changes each UTC day, and `#<shader id>` in the URL on that shader.
  *
  * Stage controls are [data-stage-action] buttons, each with a key: prev/next (arrows),
- * random (R), tour (T), edit (E), save (S), link (C), close (Esc). The editor
+ * random (R), mod (M: asks the tracker museum on the page for a random module by dispatching
+ * `tracker:random` on document), tour (T), edit (E), save (S), link (C), close (Esc). The editor
  * ([data-stage-editor] with a [data-editor-input] textarea) recompiles the open shader as
  * its source changes; a source that fails to compile leaves the last good program running.
  */
@@ -502,6 +503,14 @@ function init(): void {
     prev: () => step(-1),
     next: () => step(1),
     random: () => openStage(randomShader()),
+    mod: () => {
+      document.dispatchEvent(new CustomEvent('tracker:random'));
+      // The museum puts the new piece on its placard before its download starts.
+      const title = document.querySelector('[data-tracker-field="title"]')?.textContent?.trim();
+      // ponytail: reports only the piece this key started; when it ends and the museum moves on,
+      // the stage says nothing. Listen for a museum event here if that readout is wanted.
+      say(title ? `♪ ${title}` : 'No museum on this page');
+    },
     tour: () => {
       setTour(!tourTimer);
       say(tourTimer ? `Tour on · every ${TOUR_MS / 1000}s` : 'Tour off');
@@ -521,6 +530,7 @@ function init(): void {
     arrowright: 'next',
     ' ': 'pause',
     r: 'random',
+    m: 'mod',
     t: 'tour',
     e: 'edit',
     s: 'save',
