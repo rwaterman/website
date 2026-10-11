@@ -258,6 +258,10 @@ test.describe('/fun mod music file museum', () => {
     await page.locator('[data-stage-action="close"]').click();
     await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('li[data-shader="mountains"]')).toBeVisible();
+    await expect(page).toHaveURL(/#shaders$/);
+    await page.reload();
+    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('li[data-shader="mountains"]')).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -287,6 +291,9 @@ test.describe('/fun mod music file museum', () => {
     await page.getByRole('tab', { name: 'Mod Music File Museum' }).click();
     await page.locator('[data-tracker] [data-random-shader]').click();
     await expect(stage).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(stage).toBeHidden();
+    await expect(page).toHaveURL(/#museum$/);
     await expect(status).toHaveText('Playing.');
     await expect(title).toHaveText(playing);
     expect(downloads).toHaveLength(1);

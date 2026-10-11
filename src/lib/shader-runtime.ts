@@ -433,7 +433,9 @@ function init(): void {
     setEditor(false);
     stageRoot.hidden = true;
     document.body.style.overflow = '';
-    history.replaceState(null, '', location.pathname + location.search);
+    const selectedTab = document.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const tabId = selectedTab?.getAttribute('aria-controls');
+    history.replaceState(null, '', tabId ? `#${tabId}` : location.pathname + location.search);
     if (document.fullscreenElement === stageRoot) void Promise.resolve(document.exitFullscreen()).catch(() => undefined);
     schedule();
   };
