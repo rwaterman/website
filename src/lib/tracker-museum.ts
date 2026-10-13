@@ -1,5 +1,5 @@
 /**
- * Runs the Tracker Museum section (src/components/TrackerMuseum.astro). The exhibit list and
+ * Runs the Mod Music File Museum (src/components/TrackerMuseum.astro). The exhibit list and
  * the transport drive a TrackerPlayer; each animation frame paints the newest position the
  * worklet reported: time, order / pattern / row, speed and tempo, a level meter per channel,
  * and the pattern rows around the one being played.
@@ -9,7 +9,9 @@
  * the collection in order.
  *
  * Only Play starts a download. While nothing is playing, the list and Prev / Next change the
- * placard and nothing else, which is what the page and the legal notice promise.
+ * placard and nothing else, which is what the page and the legal notice promise. The one other
+ * way a download starts is a `tracker:random` event on document, which the fullscreen shader
+ * stage dispatches from its Mod (M) control, inside that click or key press.
  */
 import { credit, downloadUrl, eras, exhibits, pageUrl, yearLabel, type Exhibit } from '../config/tracker-museum';
 import { TrackerPlayer } from './tracker-player';
@@ -27,7 +29,7 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function need<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Tracker Museum markup is missing ${selector}`);
+  if (!element) throw new Error(`Mod Music File Museum markup is missing ${selector}`);
   return element;
 }
 
@@ -297,6 +299,10 @@ function mount(root: HTMLElement): void {
   seek.addEventListener('change', () => {
     seeking = false;
     void player.seek(Number(seek.value));
+  });
+  document.addEventListener('tracker:random', () => {
+    const others = exhibits.filter((exhibit) => exhibit !== current);
+    void play(others[Math.floor(Math.random() * others.length)] ?? current);
   });
 
   if (reducedMotion) {

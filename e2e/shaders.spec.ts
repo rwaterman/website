@@ -11,7 +11,7 @@ test.describe('/fun shader gallery', () => {
   test('every shader file is registered, compiles, and paints', async ({ page }) => {
     test.setTimeout(240_000);
     const errors = trackErrors(page);
-    await page.goto('/fun');
+    await page.goto('/fun#shaders');
 
     const tiles = page.locator('li[data-shader]');
     const ids = await tiles.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-shader') ?? ''));
@@ -26,7 +26,7 @@ test.describe('/fun shader gallery', () => {
   });
 
   test('a tile pauses and resumes', async ({ page }) => {
-    await page.goto('/fun');
+    await page.goto('/fun#shaders');
     const tile = page.locator('li[data-shader]').first();
     const toggle = tile.locator('[data-play]');
     await expect(toggle).toHaveText('Pause');
@@ -39,7 +39,7 @@ test.describe('/fun shader gallery', () => {
   });
 
   test('a tile opens the fullscreen stage on its own shader', async ({ page }) => {
-    await page.goto('/fun');
+    await page.goto('/fun#shaders');
     const stage = page.locator('[data-stage]');
     await expect(stage).toBeHidden();
 
@@ -54,11 +54,11 @@ test.describe('/fun shader gallery', () => {
   });
 
   test('stage keyboard controls: R picks another shader, Space pauses, Esc closes', async ({ page }) => {
-    await page.goto('/fun');
+    await page.goto('/fun#shaders');
     const stage = page.locator('[data-stage]');
     const title = stage.locator('[data-stage-title]');
 
-    await page.locator('[data-random-shader]').first().click();
+    await page.locator('#shaders [data-random-shader]').click();
     await expect(stage).toBeVisible();
     await expect(title).toHaveText(/\S/);
     const first = await title.textContent();

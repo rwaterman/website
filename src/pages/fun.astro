@@ -8,6 +8,14 @@ import { shaders, shaderKinds } from '../config/shaders';
 import { exhibits } from '../config/tracker-museum';
 import { memes, cats } from '../lib/fun';
 
+// The Games tab is built but hidden until there is something to play: FUN_GAMES=on shows it.
+const showGames = process.env.FUN_GAMES === 'on';
+const tabs = [
+  { id: 'museum', label: 'Mod Music File Museum' },
+  { id: 'shaders', label: 'Shader Collection' },
+  ...(showGames ? [{ id: 'games', label: 'Games' }] : []),
+];
+
 // Sections without content are not rendered; drop files or links in and they appear.
 const galleries = [
   { title: 'Memes', images: memes },
@@ -27,72 +35,108 @@ const filters = [
 <Layout
   background="hex"
   heading="Fun"
-  lede={`The non-work shelf. ${exhibits.length} tracker modules from the demoscene, performed live, and ${shaders.length} fragment shaders to watch while they play — open one fullscreen and rewrite its GLSL while it runs.`}
+  lede={`The non-work shelf, in two rooms. A museum of ${exhibits.length} tracker modules from the demoscene, performed live, and a collection of ${shaders.length} fragment shaders — open one fullscreen while the music plays, or press M in the shader to start a random module.`}
   description={`A museum of ${exhibits.length} classic tracker modules played live in the browser with a scrolling pattern display, and ${shaders.length} GLSL fragment shaders drafted with generative AI, running in WebGL2.`}
 >
-  <TrackerMuseum />
+  <div
+    role="tablist"
+    aria-label="Fun"
+    class="mt-[clamp(2.5rem,5vw,4rem)] flex flex-wrap gap-x-6 gap-y-1 border-b border-rule-strong"
+  >
+    {
+      tabs.map((tab, index) => (
+        <button
+          type="button"
+          role="tab"
+          id={`tab-${tab.id}`}
+          aria-controls={tab.id}
+          aria-selected={index === 0 ? 'true' : 'false'}
+          tabindex={index === 0 ? 0 : -1}
+          class="-mb-px cursor-pointer border-b-2 border-transparent py-3 font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted hover:text-text aria-selected:border-accent aria-selected:text-text"
+        >
+          {tab.label}
+        </button>
+      ))
+    }
+  </div>
 
-  <Section title="GenAI Shaders">
-    <p class="max-w-[36rem] text-muted">
-      {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
-      one fullscreen triangle, three uniforms, no libraries. Every tile goes fullscreen, where the source is
-      editable and recompiles as you type. Each shader has its own link.
-    </p>
-    <div class="mt-6 flex flex-wrap items-center gap-3">
-      <button type="button" class="button" data-random-shader>Random shader, fullscreen</button>
-      <button type="button" class="button button--ghost" data-daily-shader>Shader of the day</button>
-    </div>
-    <p class="label mt-4 leading-[2]">
-      In fullscreen: <kbd>←</kbd> <kbd>→</kbd> browse · <kbd>R</kbd> random · <kbd>T</kbd> tour · <kbd>E</kbd> edit GLSL ·
-      <kbd>S</kbd> save PNG · <kbd>C</kbd> copy link · <kbd>Space</kbd> pause · <kbd>Esc</kbd> close
-    </p>
-    <div class="mt-6 flex flex-wrap gap-2" role="group" aria-label="Filter shaders by kind">
-      {
-        filters.map((filter) => (
-          <button
-            type="button"
-            class="chip cursor-pointer hover:border-accent aria-pressed:border-accent aria-pressed:text-text"
-            data-filter={filter.kind}
-            aria-pressed={filter.kind === 'all' ? 'true' : 'false'}
-          >
-            {filter.label} · {filter.count}
-          </button>
-        ))
-      }
-    </div>
-    <ul class="card-grid mt-6 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
-      {
-        shaders.map((shader) => (
-          <li class="card scroll-mt-6 p-0" id={shader.id} data-shader={shader.id} data-kind={shader.kind}>
-            <figure class="tile [--tile-ratio:16/9]">
-              <canvas class="touch-pan-y" aria-label={`${shader.title} shader`} />
-              <div class="absolute right-3 bottom-3 flex gap-2">
-                <button type="button" data-play class="tile-button" aria-pressed="true">Pause</button>
-                <button type="button" data-fullscreen class="tile-button" aria-label={`${shader.title}, fullscreen`}>
-                  Fullscreen
-                </button>
+  <section role="tabpanel" id="museum" aria-labelledby="tab-museum" class="scroll-mt-20">
+    <TrackerMuseum />
+  </section>
+
+  <section role="tabpanel" id="shaders" aria-labelledby="tab-shaders" class="scroll-mt-20" hidden>
+    <Section title="Shader Collection">
+      <p class="max-w-[36rem] text-muted">
+        {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
+        one fullscreen triangle, three uniforms, no libraries. Every tile goes fullscreen, where the source is
+        editable and recompiles as you type. Each shader has its own link.
+      </p>
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <button type="button" class="button" data-random-shader>Random shader, fullscreen</button>
+        <button type="button" class="button button--ghost" data-daily-shader>Shader of the day</button>
+      </div>
+      <p class="label mt-4 leading-[2]">
+        In fullscreen: <kbd>←</kbd> <kbd>→</kbd> browse · <kbd>R</kbd> random · <kbd>M</kbd> random mod · <kbd>T</kbd> tour ·
+        <kbd>E</kbd> edit GLSL · <kbd>S</kbd> save PNG · <kbd>C</kbd> copy link · <kbd>Space</kbd> pause · <kbd>Esc</kbd> close
+      </p>
+      <div class="mt-6 flex flex-wrap gap-2" role="group" aria-label="Filter shaders by kind">
+        {
+          filters.map((filter) => (
+            <button
+              type="button"
+              class="chip cursor-pointer hover:border-accent aria-pressed:border-accent aria-pressed:text-text"
+              data-filter={filter.kind}
+              aria-pressed={filter.kind === 'all' ? 'true' : 'false'}
+            >
+              {filter.label} · {filter.count}
+            </button>
+          ))
+        }
+      </div>
+      <ul class="card-grid mt-6 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
+        {
+          shaders.map((shader) => (
+            <li class="card scroll-mt-6 p-0" id={shader.id} data-shader={shader.id} data-kind={shader.kind}>
+              <figure class="tile [--tile-ratio:16/9]">
+                <canvas class="touch-pan-y" aria-label={`${shader.title} shader`} />
+                <div class="absolute right-3 bottom-3 flex gap-2">
+                  <button type="button" data-play class="tile-button" aria-pressed="true">Pause</button>
+                  <button type="button" data-fullscreen class="tile-button" aria-label={`${shader.title}, fullscreen`}>
+                    Fullscreen
+                  </button>
+                </div>
+              </figure>
+              <div class="flex flex-col gap-2 p-5">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h3 class="text-h3 font-semibold">{shader.title}</h3>
+                  {shader.source.includes('iMouse') && <span class="chip">Drag me</span>}
+                  <a class="label ml-auto no-underline hover:text-text" href={`#${shader.id}`} aria-label={`Link to ${shader.title}`}>
+                    #{shader.id}
+                  </a>
+                </div>
+                <p class="label" data-caption>{shader.caption}</p>
+                <p data-error hidden class="font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent" />
+                <details class="mt-2">
+                  <summary class="label cursor-pointer hover:text-text">GLSL source</summary>
+                  <pre class="mt-3 overflow-x-auto bg-surface-2 p-4 font-mono text-[0.78rem] leading-[1.5]"><code data-shader-source={shader.id}>{shader.source}</code></pre>
+                </details>
               </div>
-            </figure>
-            <div class="flex flex-col gap-2 p-5">
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h3 class="text-h3 font-semibold">{shader.title}</h3>
-                {shader.source.includes('iMouse') && <span class="chip">Drag me</span>}
-                <a class="label ml-auto no-underline hover:text-text" href={`#${shader.id}`} aria-label={`Link to ${shader.title}`}>
-                  #{shader.id}
-                </a>
-              </div>
-              <p class="label" data-caption>{shader.caption}</p>
-              <p data-error hidden class="font-mono text-[0.8rem] leading-[1.5] whitespace-pre-wrap text-accent" />
-              <details class="mt-2">
-                <summary class="label cursor-pointer hover:text-text">GLSL source</summary>
-                <pre class="mt-3 overflow-x-auto bg-surface-2 p-4 font-mono text-[0.78rem] leading-[1.5]"><code data-shader-source={shader.id}>{shader.source}</code></pre>
-              </details>
-            </div>
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
+            </li>
+          ))
+        }
+      </ul>
+    </Section>
+  </section>
+
+  {
+    showGames && (
+      <section role="tabpanel" id="games" aria-labelledby="tab-games" class="scroll-mt-20" hidden>
+        <Section title="Games">
+          <p class="max-w-[36rem] text-muted">Nothing to play yet. This room is open while the games are being built.</p>
+        </Section>
+      </section>
+    )
+  }
 
   {
     galleries.map((gallery) => (
@@ -178,6 +222,7 @@ const filters = [
       <button type="button" class="stage-button" data-stage-action="next" aria-label="Next shader"><kbd>→</kbd></button>
       <button type="button" class="stage-button" data-play aria-pressed="true">Pause</button>
       <button type="button" class="stage-button" data-stage-action="random">Random <kbd>R</kbd></button>
+      <button type="button" class="stage-button" data-stage-action="mod">Mod <kbd>M</kbd></button>
       <button type="button" class="stage-button" data-stage-action="tour" aria-pressed="false">Tour <kbd>T</kbd></button>
       <button type="button" class="stage-button" data-stage-action="edit" aria-pressed="false">Edit <kbd>E</kbd></button>
       <button type="button" class="stage-button" data-stage-action="save">PNG <kbd>S</kbd></button>
@@ -187,6 +232,53 @@ const filters = [
   </div>
 
   <script>
+    // Tabs. The URL hash names the open tab (#museum, #shaders), and a shader's own hash (#tunnel)
+    // opens the collection, so deep links land in the right room. The shader stage rewrites the
+    // hash with replaceState, which fires no hashchange, so opening a shader from the museum
+    // leaves that tab in place.
+    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const panelOf = (tab: HTMLButtonElement): HTMLElement | null =>
+      document.getElementById(tab.getAttribute('aria-controls') ?? '');
+    const tabFor = (id: string): HTMLButtonElement | undefined =>
+      tabs.find((tab) => tab.getAttribute('aria-controls') === id);
+
+    const select = (tab: HTMLButtonElement, focus = false): void => {
+      for (const other of tabs) {
+        const selected = other === tab;
+        other.setAttribute('aria-selected', String(selected));
+        other.tabIndex = selected ? 0 : -1;
+        const panel = panelOf(other);
+        if (panel) panel.hidden = !selected;
+      }
+      if (focus) tab.focus();
+    };
+
+    const choose = (tab: HTMLButtonElement, focus = false): void => {
+      select(tab, focus);
+      history.replaceState(null, '', `#${tab.getAttribute('aria-controls')}`);
+    };
+
+    const openFromHash = (): void => {
+      const id = location.hash.slice(1);
+      const panel = document.getElementById(id)?.closest<HTMLElement>('[role="tabpanel"]');
+      const tab = tabFor(id) ?? (panel ? tabFor(panel.id) : undefined);
+      if (tab) select(tab);
+    };
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => choose(tab));
+      tab.addEventListener('keydown', (event) => {
+        const delta = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+        if (!delta) return;
+        event.preventDefault();
+        const next = tabs[(tabs.indexOf(tab) + delta + tabs.length) % tabs.length];
+        if (next) choose(next, true);
+      });
+    }
+    window.addEventListener('hashchange', openFromHash);
+    openFromHash();
+
+    // Shader kind filter.
     const chips = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
     const tiles = document.querySelectorAll<HTMLElement>('li[data-kind]');
     for (const chip of chips) {
