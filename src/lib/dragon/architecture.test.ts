@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { blueprint, lastStage } from './architecture.ts';
+import { blueprint, lastStage, propBlueprint } from './architecture.ts';
 import { generateTown, type Building } from './layout.ts';
 import { TOWNS } from './terrain.ts';
 
@@ -51,4 +51,17 @@ test('the three towns stay within an instance budget the GPU can draw every fram
   const total = buildings.reduce((sum, building) => sum + blueprint(building).length, 0);
   assert.ok(total < 20_000, `${total} parts`);
   assert.ok(total > 5000, `${total} parts is barely more than one box per building`);
+});
+
+test('every village prop is built from sound parts', () => {
+  const props = TOWNS.flatMap((site, index) => generateTown(site, index).props);
+  assert.ok(props.length > 60, `${props.length} props`);
+  for (const prop of props) {
+    const parts = propBlueprint(prop);
+    assert.ok(parts.length >= 1, `${prop.kind} has no parts`);
+    for (const part of parts) {
+      assert.ok(part.width > 0 && part.height > 0 && part.depth > 0);
+      assert.ok(Math.hypot(part.x, part.z) <= Math.hypot(prop.width, prop.depth) / 2 + 1.5, `${prop.kind} part sticks out`);
+    }
+  }
 });

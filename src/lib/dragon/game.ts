@@ -91,7 +91,7 @@ const CRASH_LENGTH = 4.2;
 /** Half the dragon's body across, for flying into buildings. */
 const DRAGON_REACH = 2.8;
 /** Damage for flying through each kind of building: the heavier the stone, the harder the hit. */
-const SMASH_DAMAGE: Record<BuildingKind, number> = { house: 8, windmill: 12, powder: 14, wall: 14, hall: 18, tower: 22, keep: 40 };
+const SMASH_DAMAGE: Record<BuildingKind, number> = { prop: 0, house: 8, windmill: 12, powder: 14, wall: 14, hall: 18, tower: 22, keep: 40 };
 
 const STYLE = /* css */ `
 html.dragon-active { background: #000; overflow: hidden; }
@@ -456,7 +456,7 @@ class Game {
     }
 
     const landmarks = city.towns.map((town, index) => {
-      const structures = city.structures.filter((structure) => structure.building.town === index);
+      const structures = city.structures.filter((structure) => structure.scored && structure.building.town === index);
       const at = (point: { x: number; z: number }): Structure | undefined =>
         structures.find((structure) => structure.building.x === point.x && structure.building.z === point.z);
       return { bell: at(town.church), keep: at(town.keep), structures };
@@ -553,7 +553,7 @@ class Game {
     this.resize();
     this.phase = cinematic ? 'arrive' : 'flight';
     this.stage.dataset.phase = this.phase;
-    this.stage.dataset.total = String(world.city.structures.length);
+    this.stage.dataset.total = String(world.city.scoredCount);
 
     if (cinematic) {
       world.dragon.rig.position.copy(START);
@@ -567,7 +567,7 @@ class Game {
     }
 
     const total = this.stage.querySelector('[data-total]');
-    if (total) total.textContent = String(world.city.structures.length);
+    if (total) total.textContent = String(world.city.scoredCount);
     this.showHealth();
     this.stage.querySelector('[data-hud]')?.setAttribute('data-on', '');
     this.stage.querySelector('[data-title]')?.setAttribute('data-on', '');
@@ -626,7 +626,13 @@ class Game {
       inferno.explode(building.x, building.y + 2, building.z, 1.6);
     } else {
       inferno.collapse(structure, behind, 22 + dragon.speed * 0.55);
-      inferno.burst(dragon.rig.position, 0.8);
+      if (structure.scored) inferno.burst(dragon.rig.position, 0.8);
+    }
+    if (building.kind === 'prop') {
+      // Carts and stalls only splinter; the dragon barely notices.
+      dragon.speed *= 0.97;
+      this.shake = Math.min(2.4, this.shake + 0.3);
+      return;
     }
     this.raiseAlarm(dragon.rig.position);
     dragon.speed *= building.kind === 'keep' || building.kind === 'tower' ? 0.6 : 0.82;
@@ -822,7 +828,7 @@ class Game {
     }
     this.fireballQueued = false;
 
-    const destroyed = city.razed / city.structures.length;
+    const destroyed = city.razed / city.scoredCount;
     this.pall += (Math.min(1, city.burning.size / 70 + destroyed * 0.75) - this.pall) * Math.min(1, dt * 0.5);
     fog.color.copy(FOG_CLEAR).lerp(FOG_SMOKE, this.pall).lerp(CLOUD_COLOR, cloud);
     fog.density = BASE_FOG + this.pall * 0.00045 + cloud * 0.014;
@@ -902,7 +908,7 @@ class Game {
     this.stage.dataset.razed = String(city.razed);
     this.stage.dataset.burning = String(city.burning.size);
     this.burningCount = city.burning.size;
-    if (city.razed === city.structures.length) {
+    if (city.razed === city.scoredCount) {
       const subtitle = this.stage.querySelector('[data-subtitle]');
       const title = this.stage.querySelector<HTMLElement>('[data-title]');
       if (subtitle && title && subtitle.textContent !== 'The realm is ash') {

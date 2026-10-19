@@ -2,7 +2,24 @@
 
 import { terrainHeight, type TownSite } from './terrain.ts';
 
-export type BuildingKind = 'house' | 'hall' | 'tower' | 'keep' | 'wall' | 'powder' | 'windmill';
+/** `prop` is never generated as a building: it marks a village prop dressed up as a structure. */
+export type BuildingKind = 'house' | 'hall' | 'tower' | 'keep' | 'wall' | 'powder' | 'windmill' | 'prop';
+
+export type PropKind = 'well' | 'stall' | 'cart' | 'hay' | 'barrel' | 'crate' | 'fence';
+
+/** Village dressing: small, mostly wooden, worth nothing on the score, but it burns and breaks like the rest. */
+export interface Prop {
+  kind: PropKind;
+  town: number;
+  x: number;
+  z: number;
+  y: number;
+  width: number;
+  depth: number;
+  height: number;
+  rotation: number;
+  tint: number;
+}
 
 export interface Building {
   kind: BuildingKind;
@@ -26,6 +43,7 @@ export interface Building {
 export interface Town {
   site: TownSite;
   buildings: Building[];
+  props: Prop[];
   church: { x: number; z: number };
   keep: { x: number; z: number };
 }
@@ -199,5 +217,109 @@ export function generateTown(site: TownSite, townIndex: number): Town {
     });
   }
 
-  return { site, buildings, church: { x: church.x, z: church.z }, keep: { x: keep.x, z: keep.z } };
+  const props = placeProps(site, townIndex, buildings, streetAngles, random);
+  return { site, buildings, props, church: { x: church.x, z: church.z }, keep: { x: keep.x, z: keep.z } };
+}
+
+const PROP_SIZES: Record<PropKind, { width: number; depth: number; height: number }> = {
+  well: { width: 3.2, depth: 3.2, height: 4.2 },
+  stall: { width: 4.2, depth: 3, height: 3.4 },
+  cart: { width: 2.2, depth: 4.2, height: 2.4 },
+  hay: { width: 1.6, depth: 2.4, height: 1.3 },
+  barrel: { width: 0.9, depth: 0.9, height: 1.2 },
+  crate: { width: 1.1, depth: 1.1, height: 1.1 },
+  fence: { width: 6, depth: 0.3, height: 1.3 },
+};
+
+/** Props go in after the buildings, from the same seeded stream, so adding them leaves the buildings unchanged. */
+function placeProps(site: TownSite, townIndex: number, buildings: Building[], streetAngles: number[], random: () => number): Prop[] {
+  const props: Prop[] = [];
+  const large = site.radius > 180;
+  const footprint = (width: number, depth: number): number => 0.5 * Math.hypot(width, depth);
+
+  const tryProp = (kind: PropKind, localX: number, localZ: number, rotation: number, margin: number): boolean => {
+    const size = PROP_SIZES[kind];
+    const x = site.x + localX;
+    const z = site.z + localZ;
+    const reach = footprint(size.width, size.depth);
+    const blocked =
+      buildings.some((building) => Math.hypot(x - building.x, z - building.z) < boundingRadius(building) + reach + margin) ||
+      props.some((other) => Math.hypot(x - other.x, z - other.z) < footprint(other.width, other.depth) + reach + margin * 0.5);
+    if (blocked) return false;
+    props.push({ kind, town: townIndex, x, z, y: terrainHeight(x, z), rotation, tint: random(), ...size });
+    return true;
+  };
+
+  // The market square: a well in the middle, stalls around it, carts at its edge.
+  tryProp('well', 0, 0, random() * Math.PI, 0);
+  const stalls = large ? 8 : 4;
+  for (let index = 0; index < stalls; index += 1) {
+    const angle = (index * 2 * Math.PI) / stalls + random() * 0.3;
+    const distance = MARKET_RADIUS * (0.55 + random() * 0.15);
+    if (tryProp('stall', Math.cos(angle) * distance, Math.sin(angle) * distance, Math.PI / 2 - angle, 0.5)) {
+      for (let goods = 0; goods < 2; goods += 1) {
+        const side = goods === 0 ? -1 : 1;
+        const along = angle + (side * 3.4) / distance;
+        tryProp(random() < 0.5 ? 'barrel' : 'crate', Math.cos(along) * distance, Math.sin(along) * distance, random() * Math.PI, 0.2);
+      }
+    }
+  }
+  const carts = large ? 4 : 2;
+  for (let index = 0; index < carts; index += 1) {
+    const street = streetAngles[index % streetAngles.length];
+    const distance = MARKET_RADIUS * 0.85 + random() * 4;
+    tryProp('cart', Math.cos(street + 0.08) * distance, Math.sin(street + 0.08) * distance, Math.PI / 2 - street + (random() - 0.5) * 0.6, 0.5);
+  }
+
+  // Barrels and crates stacked by the doors of some houses.
+  for (const building of buildings) {
+    if (building.kind !== 'house' || random() > 0.22) continue;
+    const cos = Math.cos(building.rotation);
+    const sin = Math.sin(building.rotation);
+    const count = 1 + Math.floor(random() * 3);
+    for (let index = 0; index < count; index += 1) {
+      const localX = (random() - 0.5) * building.width * 0.8;
+      const localZ = -building.depth / 2 - 1.1;
+      const x = building.x + localX * cos + localZ * sin - site.x;
+      const z = building.z - localX * sin + localZ * cos - site.z;
+      // Right against its own house, so only the props need to stay clear of each other.
+      const size = PROP_SIZES.barrel;
+      const worldX = site.x + x;
+      const worldZ = site.z + z;
+      if (props.some((other) => Math.hypot(worldX - other.x, worldZ - other.z) < footprint(other.width, other.depth) + footprint(size.width, size.depth))) continue;
+      const kind: PropKind = random() < 0.55 ? 'barrel' : 'crate';
+      props.push({ kind, town: townIndex, x: worldX, z: worldZ, y: terrainHeight(worldX, worldZ), rotation: building.rotation + random(), tint: random(), ...PROP_SIZES[kind] });
+    }
+  }
+
+  // Fenced fields with hay bales beyond the windmills.
+  for (const windmill of buildings.filter((building) => building.kind === 'windmill')) {
+    const angle = Math.atan2(windmill.z - site.z, windmill.x - site.x);
+    const centre = Math.hypot(windmill.x - site.x, windmill.z - site.z) + 26;
+    const fieldX = Math.cos(angle) * centre;
+    const fieldZ = Math.sin(angle) * centre;
+    const across = { x: -Math.sin(angle), z: Math.cos(angle) };
+    const out = { x: Math.cos(angle), z: Math.sin(angle) };
+    const halfLong = 15;
+    const halfShort = 9;
+    for (let segment = -2; segment <= 2; segment += 1) {
+      for (const side of [-1, 1]) {
+        const offset = segment * 6;
+        tryProp('fence', fieldX + across.x * offset + out.x * side * halfShort, fieldZ + across.z * offset + out.z * side * halfShort, -angle - Math.PI / 2, 0);
+      }
+    }
+    for (let segment = -1; segment <= 1; segment += 1) {
+      for (const side of [-1, 1]) {
+        const offset = segment * 6;
+        tryProp('fence', fieldX + out.x * offset + across.x * side * halfLong, fieldZ + out.z * offset + across.z * side * halfLong, -angle, 0);
+      }
+    }
+    const bales = 3 + Math.floor(random() * 4);
+    for (let index = 0; index < bales; index += 1) {
+      const a = (random() - 0.5) * (halfLong - 3) * 2;
+      const b = (random() - 0.5) * (halfShort - 3) * 2;
+      tryProp('hay', fieldX + across.x * a + out.x * b, fieldZ + across.z * a + out.z * b, random() * Math.PI, 0.3);
+    }
+  }
+  return props;
 }

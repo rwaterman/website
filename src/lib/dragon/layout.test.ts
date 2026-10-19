@@ -39,4 +39,23 @@ for (const [index, site] of TOWNS.entries()) {
       }
     }
   });
+
+  test(`town ${index} has a market with a well and stalls, and fields with fences`, () => {
+    const count = (kind: string): number => town.props.filter((prop) => prop.kind === kind).length;
+    assert.equal(count('well'), 1);
+    assert.ok(count('stall') >= 3, `${count('stall')} stalls`);
+    assert.ok(count('fence') >= 10, `${count('fence')} fence panels`);
+    assert.ok(count('hay') >= 3, `${count('hay')} hay bales`);
+    assert.ok(count('barrel') + count('crate') >= 10);
+  });
+
+  test(`town ${index} props stand clear of the buildings, apart from goods by a door`, () => {
+    for (const prop of town.props) {
+      if (prop.kind === 'barrel' || prop.kind === 'crate') continue;
+      for (const building of town.buildings) {
+        const gap = Math.hypot(prop.x - building.x, prop.z - building.z) - boundingRadius(building) - 0.5 * Math.hypot(prop.width, prop.depth);
+        assert.ok(gap >= 0, `${prop.kind} overlaps a ${building.kind} by ${(-gap).toFixed(1)}`);
+      }
+    }
+  });
 }

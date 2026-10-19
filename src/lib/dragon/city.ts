@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { blueprint, FLAMMABLE_MATERIALS, lastStage, type PartMaterial, type PartSpec } from './architecture';
-import { boundingRadius, generateTown, mulberry32, type Building, type Town } from './layout';
+import { blueprint, FLAMMABLE_MATERIALS, lastStage, propBlueprint, type PartMaterial, type PartSpec } from './architecture';
+import { boundingRadius, generateTown, mulberry32, type Building, type Prop, type Town } from './layout';
 import { TOWNS } from './terrain';
 import { roofTexture, scorchTexture, stoneTexture, timberTexture } from './world';
 
@@ -48,6 +48,8 @@ export interface Structure {
   stages: number;
   /** Next stage to let go of; stages below it are already falling or down. */
   released: number;
+  /** Buildings count toward the score; village props do not. */
+  scored: boolean;
 }
 
 const CELL = 48;
@@ -92,6 +94,11 @@ function spireGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
+/** A prop wears the same shape as a building so the fire, the physics and the dragon treat it alike. */
+function propAsBuilding(prop: Prop): Building {
+  return { kind: 'prop', town: prop.town, x: prop.x, z: prop.z, y: prop.y, width: prop.width, depth: prop.depth, height: prop.height, roof: prop.kind === 'well' ? 1 : 0, rotation: prop.rotation, ring: false, tint: prop.tint };
+}
+
 interface DirtyRange {
   min: number;
   max: number;
@@ -104,6 +111,8 @@ export class City {
   readonly burning = new Set<Structure>();
   readonly smouldering = new Set<Structure>();
   razed = 0;
+  /** How many structures count toward the score: the buildings, not the props. */
+  readonly scoredCount: number;
 
   private readonly grid = new Map<number, Structure[]>();
   private readonly meshes: Record<PartMaterial, THREE.InstancedMesh>;
@@ -124,7 +133,12 @@ export class City {
   constructor() {
     this.towns = TOWNS.map((site, index) => generateTown(site, index));
     const buildings = this.towns.flatMap((town) => town.buildings);
-    const plans = buildings.map((building) => ({ building, parts: blueprint(building) }));
+    const props = this.towns.flatMap((town) => town.props);
+    const plans = [
+      ...buildings.map((building) => ({ building, parts: blueprint(building), scored: true })),
+      ...props.map((prop) => ({ building: propAsBuilding(prop), parts: propBlueprint(prop), scored: false })),
+    ];
+    this.scoredCount = buildings.length;
     const capacity = (material: PartMaterial): number => plans.reduce((sum, plan) => sum + plan.parts.filter((part) => part.material === material).length, 0);
 
     const timber = timberTexture();
@@ -149,7 +163,7 @@ export class City {
     this.scorch.renderOrder = 1;
     this.scorch.count = 0;
 
-    for (const plan of plans) this.add(plan.building, plan.parts);
+    for (const plan of plans) this.add(plan.building, plan.parts, plan.scored);
     for (const [mesh, used] of this.counts) {
       mesh.count = used;
       mesh.instanceMatrix.needsUpdate = true;
@@ -166,9 +180,9 @@ export class City {
     return mesh;
   }
 
-  private add(building: Building, specs: PartSpec[]): void {
+  private add(building: Building, specs: PartSpec[], scored: boolean): void {
     const { kind, height, roof, tint } = building;
-    const flammable = kind === 'house' || kind === 'hall' || kind === 'windmill' || kind === 'powder';
+    const flammable = kind === 'house' || kind === 'hall' || kind === 'windmill' || kind === 'powder' || (kind === 'prop' && specs.some((spec) => spec.material !== 'stone'));
     const structure: Structure = {
       building,
       parts: [],
@@ -176,7 +190,7 @@ export class City {
       flammable,
       heat: 0,
       health: kind === 'keep' ? 3 : kind === 'tower' ? 2 : 1,
-      fuel: 6 + tint * 7 + (kind === 'hall' ? 8 : 0),
+      fuel: kind === 'prop' ? 3 + tint * 3 : 6 + tint * 7 + (kind === 'hall' ? 8 : 0),
       burnTime: 0,
       smoulder: 0,
       fuse: -1,
@@ -185,6 +199,7 @@ export class City {
       blades: null,
       stages: lastStage(specs),
       released: 0,
+      scored,
     };
     for (const spec of specs) structure.parts.push(this.addPart(building, spec));
     if (kind === 'windmill') structure.blades = this.createBlades(building);
@@ -320,7 +335,7 @@ export class City {
     structure.smoulder = 18 + this.random() * 14;
     this.burning.delete(structure);
     this.smouldering.add(structure);
-    this.razed += 1;
+    if (structure.scored) this.razed += 1;
     for (const part of structure.parts) {
       if (part.material === 'glow') this.hidePart(part);
     }
@@ -329,7 +344,7 @@ export class City {
       structure.blades = null;
     }
     const { building } = structure;
-    this.addScorch(building.x, building.y, building.z, structure.radius * 3.4);
+    this.addScorch(building.x, building.y, building.z, structure.radius * (structure.scored ? 3.4 : 2));
     return true;
   }
 

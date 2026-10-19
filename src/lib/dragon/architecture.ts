@@ -1,6 +1,6 @@
 /** Pure building blueprints: every building as a list of parts that can each fall on their own. No three.js here. */
 
-import { mulberry32, type Building } from './layout.ts';
+import { mulberry32, type Building, type Prop } from './layout.ts';
 
 /** What a part is made of, which picks its mesh: boxes, except `gable` and `stoneGable` (wedges), `spire` (cone) and `glow` (plane). */
 export type PartMaterial = 'plaster' | 'wood' | 'roof' | 'gable' | 'stone' | 'stoneGable' | 'spire' | 'glow';
@@ -300,7 +300,71 @@ export function blueprint(building: Building): PartSpec[] {
       return wall(building);
     case 'keep':
       return keep(building);
+    case 'prop':
+      throw new Error('Village props are built by propBlueprint, not blueprint');
   }
+}
+
+const CLOTH = [0xb5332a, 0x2f5f8a, 0xd9b44a, 0x6b8f3a, 0xe8e0cc, 0x8a3f7a];
+const HAY = 0xd8b458;
+
+/** Every part of a village prop, in prop-local space. Props have no footing: they go whole. */
+export function propBlueprint(prop: Prop): PartSpec[] {
+  const parts = new Parts();
+  const { width, depth, height, tint } = prop;
+  const wood = pick(WOOD, tint * 2.3);
+  switch (prop.kind) {
+    case 'well': {
+      const ring = 0.45;
+      const wall = 1.1;
+      for (const end of [-1, 1]) {
+        parts.span('stone', 0, (end * (depth - ring)) / 2, -0.4, wall, width, ring, stoneGrey(0.6 + tint * 0.15), 1);
+        parts.span('stone', (end * (width - ring)) / 2, 0, -0.4, wall, ring, depth - ring * 2, stoneGrey(0.58 + tint * 0.15), 1);
+        parts.span('wood', (end * (width - ring)) / 2, 0, wall, height - 0.6, 0.22, 0.22, wood, 0);
+      }
+      parts.span('wood', 0, 0, height - 0.9, height - 0.75, width - 0.2, 0.16, wood, 0);
+      parts.gableRoof(height - 0.6, width * 0.75, depth * 0.8, 0.9, pick(ROOFS, tint), 'gable', 0xe9dcc4, 0);
+      break;
+    }
+    case 'stall': {
+      for (const sideX of [-1, 1]) {
+        for (const sideZ of [-1, 1]) parts.span('wood', (sideX * (width - 0.2)) / 2, (sideZ * (depth - 0.2)) / 2, 0, height - 0.3, 0.16, 0.16, wood, 1);
+      }
+      parts.span('wood', 0, -depth * 0.25, 0, 1.0, width - 0.3, depth * 0.4, wood, 1);
+      const cloth = pick(CLOTH, tint);
+      parts.add('roof', [0, height - 0.15, 0], [width + 0.4, 0.08, depth + 0.5], cloth, 0, [0, 0.18, 0]);
+      for (let index = 0; index < 3; index += 1) {
+        parts.add('wood', [(index - 1) * width * 0.28, 1.2, -depth * 0.25], [0.6, 0.4, 0.5], pick(CLOTH, tint + index * 0.31), 0);
+      }
+      break;
+    }
+    case 'cart': {
+      parts.span('wood', 0, 0, 0.7, 1.0, width, depth * 0.7, wood, 1);
+      for (const side of [-1, 1]) {
+        parts.span('wood', (side * (width - 0.12)) / 2, 0, 1.0, 1.6, 0.12, depth * 0.7, wood, 1);
+        // Two square plates a quarter turn apart read as a spoked wheel from the air.
+        for (const turn of [0, Math.PI / 4]) parts.add('wood', [side * (width / 2 + 0.12), 0.55, depth * 0.05], [0.14, 1.1, 1.1], 0x2f241c, 1, [0, turn, 0]);
+        parts.add('wood', [side * 0.5, 0.75, -depth * 0.5], [0.1, 0.1, depth * 0.45], wood, 1, [0, 0.12, 0]);
+      }
+      parts.span('wood', 0, depth * 0.05, 1.0, 2.3, width - 0.35, depth * 0.55, HAY, 0);
+      break;
+    }
+    case 'hay':
+      parts.span('wood', 0, 0, 0, height, width, depth, HAY, 0);
+      break;
+    case 'barrel':
+      parts.span('wood', 0, 0, 0, height, width, depth, 0x6b4a2e, 0);
+      parts.span('wood', 0, 0, height * 0.7, height * 0.8, width + 0.06, depth + 0.06, 0x2a2a2a, 0);
+      break;
+    case 'crate':
+      parts.span('wood', 0, 0, 0, height, width, depth, 0x8a6a42, 0);
+      break;
+    case 'fence':
+      for (const along of [-0.5, 0, 0.5]) parts.span('wood', along * (width - 0.2), 0, -0.3, height, 0.18, 0.18, wood, 1);
+      for (const rail of [0.5, 1.05]) parts.span('wood', 0, 0, rail, rail + 0.12, width, 0.08, wood, 0);
+      break;
+  }
+  return parts.list;
 }
 
 /** Highest stage in a blueprint: how many steps its collapse takes. */
