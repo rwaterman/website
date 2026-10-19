@@ -15,6 +15,9 @@ export interface FlightInput {
 const CRUISE_SPEED = 58;
 const MIN_SPEED = 30;
 const MAX_SPEED = 150;
+/** Boosting raises the cruise target by this much and lets the dragon run past MAX_SPEED. */
+const BOOST_SPEED = 80;
+const BOOST_OVERSPEED = 40;
 /** How far the dragon's belly hangs below the rig; touching the ground means this close. */
 const BELLY = 2.6;
 /** Below this height over the ground the dragon pulls up a little on its own; a steep dive still crashes. */
@@ -165,6 +168,8 @@ export class Dragon {
   flapPower = 1;
   /** Downward speed at which the belly hit the ground this frame, or 0. */
   groundImpact = 0;
+  /** 0 cruising .. 1 full boost, eased in and out; the wings, camera and sound follow it. */
+  boostLevel = 0;
 
   private readonly body = new THREE.Group();
   private readonly neck: THREE.Mesh[] = [];
@@ -257,9 +262,10 @@ export class Dragon {
   update(dt: number, input: FlightInput): void {
     const rollTarget = -input.steerX * 1.12;
     const pitchTarget = input.steerY * 0.82;
-    this.roll += (rollTarget - this.roll) * Math.min(1, dt * 3.0);
-    this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * 2.4);
-    this.yaw += (Math.sin(this.roll) * 1.05 - input.steerX * 0.25) * dt;
+    this.roll += (rollTarget - this.roll) * Math.min(1, dt * 4.2);
+    this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * 3.4);
+    this.yaw += (Math.sin(this.roll) * 1.15 - input.steerX * 0.35) * dt;
+    this.boostLevel += ((input.boost ? 1 : 0) - this.boostLevel) * Math.min(1, dt * (input.boost ? 6 : 2.2));
 
     const position = this.rig.position;
     const radius = Math.hypot(position.x, position.z);
@@ -276,9 +282,9 @@ export class Dragon {
     if (clearance < ASSIST_HEIGHT && this.pitch < 0.2) this.pitch += (1 - clearance / ASSIST_HEIGHT) * 1.1 * dt;
     if (position.y > CEILING && this.pitch > -0.2) this.pitch -= ((position.y - CEILING) / 80) * dt * 2;
 
-    const target = CRUISE_SPEED + input.throttle * 24 + (input.boost ? 48 : 0);
-    this.speed += (-Math.sin(this.pitch) * 34 + (target - this.speed) * 0.7) * dt;
-    this.speed = Math.min(MAX_SPEED, Math.max(MIN_SPEED, this.speed));
+    const target = CRUISE_SPEED + input.throttle * 24 + this.boostLevel * BOOST_SPEED;
+    this.speed += (-Math.sin(this.pitch) * 34 + (target - this.speed) * (0.7 + this.boostLevel * 1.8)) * dt;
+    this.speed = Math.min(MAX_SPEED + this.boostLevel * BOOST_OVERSPEED, Math.max(MIN_SPEED, this.speed));
 
     this.rig.rotation.set(this.pitch, this.yaw, this.roll);
     this.velocity.set(0, 0, -1).applyEuler(this.rig.rotation).multiplyScalar(this.speed);
@@ -298,6 +304,7 @@ export class Dragon {
     this.velocity.x *= 0.55;
     this.velocity.z *= 0.55;
     this.tumble = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 3);
+    this.boostLevel = 0;
   }
 
   /** One frame of the wreck: gravity, a tumble that dies away, and a slide to rest along the ground. */
@@ -331,26 +338,29 @@ export class Dragon {
     this.tumble = 0;
     this.speed = speed;
     this.groundImpact = 0;
+    this.boostLevel = 0;
   }
 
   private animate(dt: number, input: FlightInput): void {
     const climbing = Math.max(0, this.pitch);
     const diving = Math.max(0, -this.pitch);
-    const power = THREE.MathUtils.clamp(0.75 + climbing * 0.9 - diving * 1.6 + (input.boost ? 0.3 : 0), 0.12, 1.3);
-    this.flapPower += (power - this.flapPower) * Math.min(1, dt * 2);
-    this.wingPhase += dt * Math.PI * 2 * (0.62 + this.flapPower * 0.42);
+    const boost = this.boostLevel;
+    const power = THREE.MathUtils.clamp(0.75 + climbing * 0.9 - diving * 1.6 * (1 - boost) + boost * 0.6, 0.12, 1.4);
+    this.flapPower += (power - this.flapPower) * Math.min(1, dt * (2 + boost * 6));
+    // Boosting drives fast, deep, full-power wingbeats.
+    this.wingPhase += dt * Math.PI * 2 * (0.62 + this.flapPower * 0.42 + boost * 1.5);
 
     const beat = Math.sin(this.wingPhase);
     for (const wing of this.wings) {
-      const amplitude = 0.2 + this.flapPower * 0.42;
+      const amplitude = 0.2 + this.flapPower * 0.42 + boost * 0.3;
       wing.joints[0].rotation.z = 0.12 + beat * amplitude;
       wing.joints[1].rotation.z = Math.sin(this.wingPhase - 0.9) * amplitude * 0.75 - 0.05;
       wing.joints[2].rotation.z = Math.sin(this.wingPhase - 1.7) * amplitude * 0.7 - 0.08;
       // Swept back in a dive.
-      wing.joints[0].rotation.y = -diving * 0.5;
-      wing.joints[1].rotation.y = -diving * 0.55;
+      wing.joints[0].rotation.y = -diving * 0.5 * (1 - boost) - boost * 0.18;
+      wing.joints[1].rotation.y = -diving * 0.55 * (1 - boost) - boost * 0.3;
     }
-    this.body.position.y = -beat * 0.32 * this.flapPower;
+    this.body.position.y = -beat * (0.32 + boost * 0.25) * this.flapPower;
 
     this.sway += (-this.roll * 2.3 - this.sway) * Math.min(1, dt * 3.5);
     this.nod += (-this.pitch * 1.6 - this.nod) * Math.min(1, dt * 3);

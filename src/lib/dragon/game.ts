@@ -14,7 +14,7 @@ import { City, type Structure } from './city';
 import type { BuildingKind } from './layout';
 import { Dragon } from './dragon';
 import { Inferno, type FireQuality } from './fire';
-import { createInput, type Controls, type Input } from './input';
+import { createInput, type Controls, type Input, type InputDevice } from './input';
 import { FOLD_START, Intro, INTRO_LENGTH, RIP_START, WORMHOLE_START } from './intro';
 import { CLOUD, EMBER, FIRE, ParticleField, SMOKE } from './particles';
 import { terrainHeight, TOWNS, WATER_LEVEL } from './terrain';
@@ -82,6 +82,11 @@ const SLOW_FRAME_MS = 30;
 const CLOUD_BASE = 430;
 const START = new THREE.Vector3(0, 540, 1250);
 const MAX_HEALTH = 100;
+/** A full boost lasts this many seconds, and refills in BOOST_RECHARGE once released. */
+const BOOST_SECONDS = 3.2;
+const BOOST_RECHARGE = 5;
+/** After running the meter dry, boost comes back only once it has refilled this far. */
+const BOOST_RESUME = 0.3;
 /** Downward speed below which touching the ground is a scrape, not a crash. */
 const SCRAPE_SPEED = 9;
 const REGEN_DELAY = 5;
@@ -118,6 +123,16 @@ html.dragon-active body { display: none !important; }
 .dragon-keys[data-off] { opacity: 0; }
 .dragon-keys b { color: #ffb35c; font-weight: 500; }
 .dragon-sight { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 1.5px solid rgba(255, 220, 170, 0.55); border-radius: 50%; }
+.dragon-stick { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #ffb35c; box-shadow: 0 0 6px #ff7a2a; }
+.dragon-speed { position: absolute; inset: -12%; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg 2.6deg, rgba(255, 238, 214, 0.28) 2.6deg 3.1deg, transparent 3.1deg 7.3deg);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 26%, #000 72%); mask: radial-gradient(circle at 50% 50%, transparent 26%, #000 72%);
+  animation: dragon-speed 0.18s steps(2) infinite; }
+@keyframes dragon-speed { from { transform: rotate(0deg) scale(1); } to { transform: rotate(2.2deg) scale(1.05); } }
+.dragon-boost { position: absolute; top: calc(max(1.1rem, env(safe-area-inset-top)) + 0.85rem); left: 50%; transform: translateX(-50%); width: min(28vw, 170px); height: 0.3rem; border-radius: 999px; background: rgba(20, 5, 2, 0.5); overflow: hidden; }
+.dragon-boost span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ffcf6a, #fff4cf); }
+.dragon-boost[data-spent] span { background: rgba(255, 207, 106, 0.35); }
+.dragon-boostbtn { left: max(1.4rem, env(safe-area-inset-left)); bottom: max(1.8rem, env(safe-area-inset-bottom)); width: 4.8rem; height: 4.8rem; }
 .dragon-sight::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: rgba(255, 220, 170, 0.9); }
 .dragon-button { pointer-events: auto; position: absolute; display: grid; place-items: center; border: 1.5px solid rgba(255, 200, 140, 0.7); border-radius: 50%; background: rgba(40, 10, 4, 0.5); color: #ffd9a8; font: 600 0.75rem var(--font-mono, monospace); letter-spacing: 0.1em; text-transform: uppercase; touch-action: none; }
 .dragon-button:active { background: rgba(255, 120, 30, 0.6); }
@@ -141,15 +156,18 @@ html.dragon-active body { display: none !important; }
 
 const HUD = /* html */ `
 <div class="dragon-hud" data-hud>
+  <div class="dragon-speed" data-speed></div>
   <div class="dragon-vignette"></div>
-  <div class="dragon-sight"></div>
+  <div class="dragon-sight"><div class="dragon-stick" data-stick></div></div>
   <div class="dragon-score"><strong data-razed>0</strong>razed of <b data-total>0</b><span data-ablaze></span></div>
   <div class="dragon-health" data-health role="meter" aria-label="Dragon health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span></span></div>
+  <div class="dragon-boost" data-boost-meter aria-hidden="true"><span></span></div>
   <div class="dragon-hurt" data-hurt></div>
   <div class="dragon-title" data-title><h2 data-heading></h2><p data-subtitle></p></div>
   <p class="dragon-keys" data-keys></p>
   <button class="dragon-button dragon-bomb" type="button" data-bomb hidden>Bomb</button>
   <button class="dragon-button dragon-fire" type="button" data-fire hidden>Fire</button>
+  <button class="dragon-button dragon-boostbtn" type="button" data-boost-button hidden>Boost</button>
   <button class="dragon-button dragon-exit" type="button" data-exit aria-label="Leave the dragon">&#x2715;</button>
 </div>
 <div class="dragon-pause" data-pause hidden><strong>Paused</strong><span>Click to fly on &middot; Esc to leave</span></div>
@@ -157,8 +175,11 @@ const HUD = /* html */ `
 <div class="dragon-fade" data-fade></div>
 `;
 
-const KEYS_DESKTOP = '<b>Mouse</b> steer &middot; <b>Hold click</b> or <b>Space</b> breathe fire &middot; <b>F</b> fireball &middot; <b>W S</b> speed &middot; <b>Shift</b> surge &middot; <b>M</b> mute &middot; <b>Esc</b> leave';
-const KEYS_TOUCH = '<b>Drag</b> to steer &middot; hold <b>Fire</b> &middot; tap <b>Bomb</b>';
+const KEYS: Record<InputDevice, string> = {
+  mouse: '<b>Mouse</b> or <b>A D &uarr; &darr;</b> steer &middot; <b>Click</b> / <b>Space</b> breathe fire &middot; <b>F</b> fireball &middot; <b>Shift</b> boost &middot; <b>W S</b> speed &middot; <b>M</b> mute &middot; <b>Esc</b> leave',
+  touch: '<b>Drag</b> to steer &middot; hold <b>Fire</b> &middot; hold <b>Boost</b> &middot; tap <b>Bomb</b>',
+  gamepad: '<b>Left stick</b> steer &middot; <b>RT</b> breathe fire &middot; <b>LT</b> / <b>A</b> boost &middot; <b>X</b> fireball &middot; <b>Right stick</b> speed &middot; <b>Start</b> pause &middot; <b>Back</b> leave',
+};
 
 const smoothstep = (edge0: number, edge1: number, value: number): number => {
   const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
@@ -227,6 +248,10 @@ class Game {
   private townSounds: TownSound[] = [];
   private nearFires: THREE.Vector3[] = [];
   private health = MAX_HEALTH;
+  private hintTimer = 0;
+  private boostEnergy = 1;
+  private boostSpent = false;
+  private boosting = false;
   private sinceHurt = 0;
   private crashTime = 0;
   private crashes = 0;
@@ -275,6 +300,10 @@ class Game {
         if (this.phase === 'intro') this.stop();
         else this.setPaused(true);
       },
+      onPauseToggle: () => {
+        if (this.phase !== 'intro') this.setPaused(!this.paused);
+      },
+      onDevice: (device) => this.showControls(device),
     });
     this.wireHud();
 
@@ -350,23 +379,18 @@ class Game {
       },
       { signal },
     );
-    this.input.holdFire(find('[data-fire]'));
+    this.input.hold(find('[data-fire]'), 'fire');
+    this.input.hold(find('[data-boost-button]'), 'boost');
     find('[data-pause]').addEventListener('click', () => this.setPaused(false), { signal });
-    const showTouchControls = (): void => {
-      find('[data-fire]').hidden = false;
-      find('[data-bomb]').hidden = false;
-      find('[data-keys]').innerHTML = KEYS_TOUCH;
-    };
     // A phone or tablet gets its buttons from the start, not after the first tap on the sky.
-    if (matchMedia('(pointer: coarse)').matches) showTouchControls();
-    else find('[data-keys]').innerHTML = KEYS_DESKTOP;
+    this.showControls(this.input.device);
 
     this.stage.addEventListener(
       'pointerdown',
       (event) => {
         if (this.audio && this.audio.state === 'suspended' && !this.paused) void this.resumeAudio(this.audio);
         if (event.pointerType === 'touch') {
-          showTouchControls();
+          this.showControls('touch');
         } else if (!this.input.locked && !this.paused) {
           this.input.requestLock();
         }
@@ -375,6 +399,22 @@ class Game {
       },
       { signal },
     );
+  }
+
+  /** The hints, and the on-screen buttons on touch, for whichever control the player last used. */
+  private showControls(device: InputDevice): void {
+    const keys = this.stage.querySelector<HTMLElement>('[data-keys]');
+    if (keys) {
+      keys.innerHTML = KEYS[device];
+      // Switching devices brings the hints back for a while.
+      keys.removeAttribute('data-off');
+      window.clearTimeout(this.hintTimer);
+      if (this.phase !== 'intro') this.hintTimer = window.setTimeout(() => keys.setAttribute('data-off', ''), 9000);
+    }
+    for (const selector of ['[data-fire]', '[data-bomb]', '[data-boost-button]']) {
+      const button = this.stage.querySelector<HTMLElement>(selector);
+      if (button) button.hidden = device !== 'touch';
+    }
   }
 
   private setPaused(paused: boolean): void {
@@ -435,7 +475,9 @@ class Game {
       explosion: (position, size) => {
         this.audio?.explosion(position, size);
         const distance = position.distanceTo(this.cameraPosition);
-        this.shake = Math.min(2.4, this.shake + size * 1.5 * Math.max(0, 1 - distance / 520));
+        const nearness = Math.max(0, 1 - distance / 520);
+        this.shake = Math.min(2.4, this.shake + size * 1.5 * nearness);
+        if (nearness > 0.2) this.input.rumble(Math.min(1, size * 0.5 * nearness), 0.3);
         this.raiseAlarm(position);
       },
       collapse: (position, stone, size) => {
@@ -484,6 +526,8 @@ class Game {
     this.raf = requestAnimationFrame(this.frame);
     const elapsed = (now - this.last) / 1000;
     this.last = now;
+    // While paused only the gamepad is read, so its Start button can fly on again.
+    if (this.paused && !this.manual) this.input.update(0);
     if (document.hidden || this.paused || this.manual) return;
     this.step(Math.min(0.25, elapsed), true);
   };
@@ -576,13 +620,54 @@ class Game {
     if (total) total.textContent = String(world.city.scoredCount);
     this.showHealth();
     this.stage.querySelector('[data-hud]')?.setAttribute('data-on', '');
-    window.setTimeout(() => this.stage.querySelector('[data-keys]')?.setAttribute('data-off', ''), 14_000);
+    window.clearTimeout(this.hintTimer);
+    this.hintTimer = window.setTimeout(() => this.stage.querySelector('[data-keys]')?.setAttribute('data-off', ''), 14_000);
   }
 
   private raiseAlarm(position: THREE.Vector3): void {
     for (const [index, site] of TOWNS.entries()) {
       if (Math.hypot(position.x - site.x, position.z - site.z) < site.radius * 1.5) this.alarmed[index] = true;
     }
+  }
+
+  /**
+   * Spends and refills the boost meter. Returns whether the dragon is boosting this frame; running the
+   * meter dry locks boost out until it has refilled a little, so it cannot be feathered at empty.
+   */
+  private updateBoost(dt: number, wanted: boolean, world: World): boolean {
+    const boosting = wanted && !this.boostSpent && this.boostEnergy > 0;
+    if (boosting) {
+      this.boostEnergy = Math.max(0, this.boostEnergy - dt / BOOST_SECONDS);
+      if (this.boostEnergy === 0) this.boostSpent = true;
+    } else {
+      this.boostEnergy = Math.min(1, this.boostEnergy + dt / BOOST_RECHARGE);
+      if (this.boostSpent && this.boostEnergy >= BOOST_RESUME) this.boostSpent = false;
+    }
+    if (boosting && !this.boosting) {
+      // The kick: a jolt of speed, a wingbeat you can feel, and a roar.
+      world.dragon.speed += 16;
+      this.shake = Math.min(2.4, this.shake + 0.7);
+      this.input.rumble(0.55, 0.3);
+      this.audio?.roar(0.55);
+    }
+    if (boosting) this.input.rumble(0.18, 0.12);
+    this.boosting = boosting;
+    const meter = this.stage.querySelector<HTMLElement>('[data-boost-meter]');
+    if (meter) {
+      const fill = meter.querySelector<HTMLElement>('span');
+      if (fill) fill.style.width = `${this.boostEnergy * 100}%`;
+      meter.toggleAttribute('data-spent', this.boostSpent);
+    }
+    this.stage.dataset.boost = boosting ? 'on' : 'off';
+    return boosting;
+  }
+
+  /** Speed lines, and the stick dot inside the sight that shows where the dragon is being steered. */
+  private drawTurbo(turbo: number, controls: Controls): void {
+    const lines = this.stage.querySelector<HTMLElement>('[data-speed]');
+    if (lines) lines.style.opacity = this.reducedMotion ? '0' : (turbo * 0.95).toFixed(3);
+    const stick = this.stage.querySelector<HTMLElement>('[data-stick]');
+    if (stick) stick.style.transform = `translate(${(controls.steerX * 9).toFixed(1)}px, ${(-controls.steerY * 9).toFixed(1)}px)`;
   }
 
   /** Ground and buildings: a scrape or a smash costs health, a hard landing is a crash. */
@@ -593,6 +678,7 @@ class Game {
       if (dragon.groundImpact < SCRAPE_SPEED) {
         dragon.pitch = Math.max(dragon.pitch, 0.3);
         dragon.speed *= 0.85;
+        this.input.rumble(0.45, 0.2);
         this.hurt(4 + dragon.groundImpact * 1.4, world);
         for (let index = 0; index < 14; index += 1) {
           inferno.smoke.emit(position.x + (Math.random() - 0.5) * 6, position.y - 2.4, position.z + (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 10, 2 + Math.random() * 4, (Math.random() - 0.5) * 10, 1.5 + Math.random(), 7 + Math.random() * 6, SMOKE, this.time);
@@ -642,6 +728,7 @@ class Game {
     this.raiseAlarm(dragon.rig.position);
     dragon.speed *= building.kind === 'keep' || building.kind === 'tower' ? 0.6 : 0.82;
     this.shake = Math.min(2.4, this.shake + 1.1);
+    this.input.rumble(0.8, 0.35);
     this.audio?.roar(0.9);
     this.hurt(SMASH_DAMAGE[building.kind], world);
   }
@@ -694,6 +781,7 @@ class Game {
     inferno.burst(position, 1.5);
     dragon.startWreck();
     this.shake = 2.4;
+    this.input.rumble(1, 0.9);
     this.audio?.roar(1);
     this.audio?.setBreathing(false);
     const heading = this.stage.querySelector('[data-heading]');
@@ -735,6 +823,8 @@ class Game {
   private respawn(world: World): void {
     world.dragon.reset(START, -0.42, 95);
     this.health = MAX_HEALTH;
+    this.boostEnergy = 1;
+    this.boostSpent = false;
     this.sinceHurt = REGEN_DELAY;
     this.showHealth();
     this.shake = 0;
@@ -788,6 +878,7 @@ class Game {
     }
     const armed = handoff > 0.6 && !crashed;
     const breathing = controls.fire && armed;
+    const boosting = this.updateBoost(dt, controls.boost && armed, world);
     if (crashed) {
       this.crashFrame(dt, world);
     } else {
@@ -795,7 +886,7 @@ class Game {
         steerX: controls.steerX * handoff,
         steerY: controls.steerY * handoff - 0.5 * (1 - handoff),
         throttle: controls.throttle * handoff + (1 - handoff),
-        boost: controls.boost && armed,
+        boost: boosting,
         breathing,
       });
       this.collide(world);
@@ -803,14 +894,17 @@ class Game {
     }
 
     this.shake *= Math.exp(-dt * 3.2);
-    const jolt = this.reducedMotion ? 0 : this.shake;
-    camera.position.set((Math.random() - 0.5) * jolt * 0.5, 3.0 + (Math.random() - 0.5) * jolt * 0.5, 1.4);
+    const turbo = dragon.boostLevel;
+    // Boosting adds a constant rumble on top of whatever the last impact left.
+    const jolt = this.reducedMotion ? 0 : this.shake + turbo * 0.32;
+    camera.position.set((Math.random() - 0.5) * jolt * 0.5, 3.0 + (Math.random() - 0.5) * jolt * 0.5 - turbo * 0.35, 1.4 + turbo * 0.9);
     camera.rotation.set(-0.11 + (Math.random() - 0.5) * jolt * 0.02, 0, -dragon.roll * 0.3 + (Math.random() - 0.5) * jolt * 0.02);
-    const fov = THREE.MathUtils.clamp(72 + (dragon.speed - 58) * 0.17, 66, 94);
+    const fov = THREE.MathUtils.clamp(72 + (dragon.speed - 58) * 0.17 + turbo * 12, 66, 108);
     if (Math.abs(fov - camera.fov) > 0.05) {
-      camera.fov += (fov - camera.fov) * Math.min(1, dt * 3);
+      camera.fov += (fov - camera.fov) * Math.min(1, dt * (3 + turbo * 4));
       camera.updateProjectionMatrix();
     }
+    this.drawTurbo(turbo, controls);
     camera.updateMatrixWorld(true);
     camera.getWorldPosition(this.cameraPosition);
     camera.getWorldDirection(this.cameraDirection);
@@ -855,6 +949,26 @@ class Game {
           0,
           3,
           70 + Math.random() * 70,
+          CLOUD,
+          this.time,
+        );
+      }
+    }
+
+    if (dragon.boostLevel > 0.3) {
+      // Shreds of cloud whipping past: the speed reads even over open country.
+      for (let index = 0; index < 3; index += 1) {
+        const reach = 60 + Math.random() * 110;
+        const side = (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 30);
+        world.clouds.emit(
+          this.cameraPosition.x + this.cameraDirection.x * reach + this.cameraDirection.z * side,
+          this.cameraPosition.y + this.cameraDirection.y * reach + (Math.random() - 0.5) * 30,
+          this.cameraPosition.z + this.cameraDirection.z * reach - this.cameraDirection.x * side,
+          0,
+          0,
+          0,
+          1.1,
+          5 + Math.random() * 7,
           CLOUD,
           this.time,
         );
