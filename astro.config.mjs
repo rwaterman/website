@@ -2,13 +2,14 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
+import react from '@astrojs/react';
 
 // https://astro.build/config
 // `site` is provided per environment at build time (https://dev.rickwaterman.com
 // vs https://rickwaterman.com) so canonical URLs and sitemaps are correct.
 export default defineConfig({
   site: process.env.SITE,
-  integrations: [sitemap()],
+  integrations: [sitemap(), react()],
   vite: {
     plugins: [tailwindcss()],
     // src/lib/tracker.worklet.ts is bundled as a worker and loaded as an AudioWorklet. The default
