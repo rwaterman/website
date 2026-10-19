@@ -61,7 +61,7 @@ const FRICTION = 0.6;
 const CONTACT_MARGIN = 0.02;
 const GRADIENT_STEP = 0.5;
 /** Steepest terrain rise per metre assumed when skipping corner tests for airborne bodies. */
-const MAX_TERRAIN_SLOPE = 2;
+const MAX_TERRAIN_SLOPE = 3;
 const AIR_LINEAR_DAMPING = 0.02;
 const GROUND_LINEAR_DAMPING = 0.2;
 const AIR_ANGULAR_DAMPING = 0.8;

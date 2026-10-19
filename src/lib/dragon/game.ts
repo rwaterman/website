@@ -11,12 +11,13 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { DragonAudio, type AudioFrame, type TownSound } from './audio';
 import { auditionVoices, type VoiceStats } from './audition';
 import { City, type Structure } from './city';
+import type { BuildingKind } from './layout';
 import { Dragon } from './dragon';
 import { Inferno, type FireQuality } from './fire';
 import { createInput, type Controls, type Input } from './input';
 import { FOLD_START, Intro, INTRO_LENGTH, RIP_START, WORMHOLE_START } from './intro';
-import { CLOUD, ParticleField } from './particles';
-import { TOWNS } from './terrain';
+import { CLOUD, EMBER, FIRE, ParticleField, SMOKE } from './particles';
+import { terrainHeight, TOWNS, WATER_LEVEL } from './terrain';
 import { CLOUD_COLOR, createForest, createSky, createTerrain, createWater, FOG_CLEAR, FOG_SMOKE, SUN_DIRECTION, type Sky } from './world';
 
 /**
@@ -35,6 +36,8 @@ interface DragonDebug {
   /** Puts the dragon at a position and heading. */
   place(x: number, y: number, z: number, yaw: number, pitch: number): void;
   fireball(): void;
+  /** Lines the dragon up, level, `distance` metres short of the first standing building of `kind`. */
+  approach(kind: BuildingKind, distance: number): boolean;
 }
 
 declare global {
@@ -66,7 +69,7 @@ interface World {
   landmarks: { bell: Structure | undefined; keep: Structure | undefined; structures: Structure[] }[];
 }
 
-type Phase = 'intro' | 'arrive' | 'flight';
+type Phase = 'intro' | 'arrive' | 'flight' | 'crash';
 
 const HIGH: Quality = { fireParticles: 16_000, smokeParticles: 5000, debris: 1400, emitBudget: 200, breathRate: 520, chunkScale: 1, bodies: 2400, terrainSegments: 220, trees: 2600, clouds: 300, pixelRatio: 2, samples: 4 };
 const LOW: Quality = { fireParticles: 7000, smokeParticles: 2400, debris: 600, emitBudget: 90, breathRate: 300, chunkScale: 0.55, bodies: 1100, terrainSegments: 140, trees: 1100, clouds: 130, pixelRatio: 1.25, samples: 0 };
@@ -78,6 +81,17 @@ const ARRIVE_LENGTH = 4.5;
 const SLOW_FRAME_MS = 30;
 const CLOUD_BASE = 430;
 const START = new THREE.Vector3(0, 540, 1250);
+const MAX_HEALTH = 100;
+/** Downward speed below which touching the ground is a scrape, not a crash. */
+const SCRAPE_SPEED = 9;
+const REGEN_DELAY = 5;
+const REGEN_RATE = 4;
+const CRASH_FADE_AT = 1.6;
+const CRASH_LENGTH = 4.2;
+/** Half the dragon's body across, for flying into buildings. */
+const DRAGON_REACH = 2.8;
+/** Damage for flying through each kind of building: the heavier the stone, the harder the hit. */
+const SMASH_DAMAGE: Record<BuildingKind, number> = { house: 8, windmill: 12, powder: 14, wall: 14, hall: 18, tower: 22, keep: 40 };
 
 const STYLE = /* css */ `
 html.dragon-active { background: #000; overflow: hidden; }
@@ -109,6 +123,15 @@ html.dragon-active body { display: none !important; }
 .dragon-exit { top: max(0.8rem, env(safe-area-inset-top)); right: max(0.8rem, env(safe-area-inset-right)); width: 2.4rem; height: 2.4rem; font-size: 1rem; opacity: 0.6; }
 .dragon-fire { right: max(1.4rem, env(safe-area-inset-right)); bottom: max(1.8rem, env(safe-area-inset-bottom)); width: 5.6rem; height: 5.6rem; }
 .dragon-bomb { right: max(7.6rem, calc(env(safe-area-inset-right) + 6.2rem)); bottom: max(1.2rem, env(safe-area-inset-bottom)); width: 4rem; height: 4rem; }
+.dragon-health { position: absolute; top: max(1.1rem, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(42vw, 260px); height: 0.5rem; border: 1px solid rgba(255, 200, 140, 0.6); border-radius: 999px; background: rgba(20, 5, 2, 0.55); overflow: hidden; }
+.dragon-health span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff4a14, #ffb35c); transition: width 0.25s ease; }
+.dragon-health[data-low] span { background: #ff2a0a; animation: dragon-pulse 0.7s ease-in-out infinite alternate; }
+@keyframes dragon-pulse { from { opacity: 1; } to { opacity: 0.45; } }
+.dragon-hurt { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 40%, rgba(210, 24, 0, 0.6) 100%); opacity: 0; pointer-events: none; }
+.dragon-hurt[data-on] { animation: dragon-hurt 0.7s ease-out forwards; }
+@keyframes dragon-hurt { from { opacity: 1; } to { opacity: 0; } }
+.dragon-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.1s ease; }
+.dragon-fade[data-on] { opacity: 1; }
 .dragon-pause { position: absolute; inset: 0; display: grid; place-content: center; gap: 0.6rem; background: rgba(6, 2, 1, 0.6); text-align: center; text-transform: uppercase; letter-spacing: 0.16em; pointer-events: auto; cursor: pointer; }
 .dragon-pause strong { font-size: 2rem; }
 .dragon-pause span { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: #ffb35c; }
@@ -120,7 +143,9 @@ const HUD = /* html */ `
   <div class="dragon-vignette"></div>
   <div class="dragon-sight"></div>
   <div class="dragon-score"><strong data-razed>0</strong>razed of <b data-total>0</b><span data-ablaze></span></div>
-  <div class="dragon-title" data-title><h2>Here be dragons</h2><p data-subtitle>The realm is yours to burn</p></div>
+  <div class="dragon-health" data-health role="meter" aria-label="Dragon health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span></span></div>
+  <div class="dragon-hurt" data-hurt></div>
+  <div class="dragon-title" data-title><h2 data-heading>Here be dragons</h2><p data-subtitle>The realm is yours to burn</p></div>
   <p class="dragon-keys" data-keys></p>
   <button class="dragon-button dragon-bomb" type="button" data-bomb hidden>Bomb</button>
   <button class="dragon-button dragon-fire" type="button" data-fire hidden>Fire</button>
@@ -128,6 +153,7 @@ const HUD = /* html */ `
 </div>
 <div class="dragon-pause" data-pause hidden><strong>Paused</strong><span>Click to fly on &middot; Esc to leave</span></div>
 <div class="dragon-flash" data-flash></div>
+<div class="dragon-fade" data-fade></div>
 `;
 
 const KEYS_DESKTOP = '<b>Mouse</b> steer &middot; <b>Hold click</b> or <b>Space</b> breathe fire &middot; <b>F</b> fireball &middot; <b>W S</b> speed &middot; <b>Shift</b> surge &middot; <b>M</b> mute &middot; <b>Esc</b> leave';
@@ -199,6 +225,11 @@ class Game {
   private readonly alarmed: boolean[] = TOWNS.map(() => false);
   private townSounds: TownSound[] = [];
   private nearFires: THREE.Vector3[] = [];
+  private health = MAX_HEALTH;
+  private sinceHurt = 0;
+  private crashTime = 0;
+  private crashes = 0;
+  private readonly local = new THREE.Vector3();
 
   constructor(origin: { x: number; y: number }) {
     this.style.textContent = STYLE;
@@ -276,6 +307,7 @@ class Game {
       fireball: () => {
         this.fireballQueued = true;
       },
+      approach: (kind, distance) => this.approach(kind, distance),
     };
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -536,6 +568,7 @@ class Game {
 
     const total = this.stage.querySelector('[data-total]');
     if (total) total.textContent = String(world.city.structures.length);
+    this.showHealth();
     this.stage.querySelector('[data-hud]')?.setAttribute('data-on', '');
     this.stage.querySelector('[data-title]')?.setAttribute('data-on', '');
     window.setTimeout(() => this.stage.querySelector('[data-keys]')?.setAttribute('data-off', ''), 14_000);
@@ -545,6 +578,180 @@ class Game {
     for (const [index, site] of TOWNS.entries()) {
       if (Math.hypot(position.x - site.x, position.z - site.z) < site.radius * 1.5) this.alarmed[index] = true;
     }
+  }
+
+  /** Ground and buildings: a scrape or a smash costs health, a hard landing is a crash. */
+  private collide(world: World): void {
+    const { dragon, city, inferno } = world;
+    const position = dragon.rig.position;
+    if (dragon.groundImpact > 0) {
+      if (dragon.groundImpact < SCRAPE_SPEED) {
+        dragon.pitch = Math.max(dragon.pitch, 0.3);
+        dragon.speed *= 0.85;
+        this.hurt(4 + dragon.groundImpact * 1.4, world);
+        for (let index = 0; index < 14; index += 1) {
+          inferno.smoke.emit(position.x + (Math.random() - 0.5) * 6, position.y - 2.4, position.z + (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 10, 2 + Math.random() * 4, (Math.random() - 0.5) * 10, 1.5 + Math.random(), 7 + Math.random() * 6, SMOKE, this.time);
+        }
+      } else {
+        this.crash(world);
+        return;
+      }
+    }
+    if (this.phase === 'arrive') return;
+
+    const hits: Structure[] = [];
+    city.query(position.x, position.z, DRAGON_REACH, (structure) => {
+      if (structure.state === 'ruined') return;
+      const { building } = structure;
+      if (position.y - DRAGON_REACH > structure.top || position.y + DRAGON_REACH < building.y) return;
+      // Into the building's own frame, so long thin walls are not judged by their bounding circle.
+      const dx = position.x - building.x;
+      const dz = position.z - building.z;
+      const cos = Math.cos(building.rotation);
+      const sin = Math.sin(building.rotation);
+      this.local.set(dx * cos - dz * sin, 0, dx * sin + dz * cos);
+      const roofed = position.y > building.y + building.height ? 1 - (position.y - building.y - building.height) / Math.max(1, building.roof) : 1;
+      const halfWidth = (building.width / 2) * Math.max(0.2, roofed) + DRAGON_REACH;
+      if (Math.abs(this.local.x) < halfWidth && Math.abs(this.local.z) < building.depth / 2 + DRAGON_REACH) hits.push(structure);
+    });
+    for (const structure of hits) this.smash(structure, world);
+  }
+
+  /** Straight through: the building comes apart forward along the flight path, and the dragon feels it. */
+  private smash(structure: Structure, world: World): void {
+    const { dragon, inferno } = world;
+    const { building } = structure;
+    const behind = dragon.rig.position.clone().addScaledVector(dragon.velocity, -6 / Math.max(1, dragon.speed));
+    if (building.kind === 'powder') {
+      inferno.explode(building.x, building.y + 2, building.z, 1.6);
+    } else {
+      inferno.collapse(structure, behind, 22 + dragon.speed * 0.55);
+      inferno.burst(dragon.rig.position, 0.8);
+    }
+    this.raiseAlarm(dragon.rig.position);
+    dragon.speed *= building.kind === 'keep' || building.kind === 'tower' ? 0.6 : 0.82;
+    this.shake = Math.min(2.4, this.shake + 1.1);
+    this.audio?.roar(0.9);
+    this.hurt(SMASH_DAMAGE[building.kind], world);
+  }
+
+  private hurt(amount: number, world: World): void {
+    if (this.phase === 'crash') return;
+    this.health = Math.max(0, this.health - amount);
+    this.sinceHurt = 0;
+    const flash = this.stage.querySelector<HTMLElement>('[data-hurt]');
+    if (flash) {
+      flash.removeAttribute('data-on');
+      void flash.offsetWidth;
+      flash.setAttribute('data-on', '');
+    }
+    this.showHealth();
+    if (this.health <= 0) this.crash(world);
+  }
+
+  private regenerate(dt: number): void {
+    this.sinceHurt += dt;
+    if (this.sinceHurt < REGEN_DELAY || this.health >= MAX_HEALTH) return;
+    this.health = Math.min(MAX_HEALTH, this.health + REGEN_RATE * dt);
+    this.showHealth();
+  }
+
+  private showHealth(): void {
+    const meter = this.stage.querySelector<HTMLElement>('[data-health]');
+    if (!meter) return;
+    const fill = meter.querySelector<HTMLElement>('span');
+    if (fill) fill.style.width = `${this.health}%`;
+    meter.setAttribute('aria-valuenow', String(Math.round(this.health)));
+    meter.toggleAttribute('data-low', this.health < 30);
+    this.stage.dataset.health = String(Math.round(this.health));
+  }
+
+  /** The big one: an explosion where the dragon hits, then a burning tumble and a fade to black. */
+  private crash(world: World): void {
+    if (this.phase === 'crash') return;
+    const { dragon, inferno } = world;
+    const position = dragon.rig.position;
+    this.phase = 'crash';
+    this.stage.dataset.phase = 'crash';
+    this.crashTime = 0;
+    this.crashes += 1;
+    this.stage.dataset.crashes = String(this.crashes);
+    this.health = 0;
+    this.showHealth();
+    const ground = Math.max(terrainHeight(position.x, position.z), WATER_LEVEL);
+    inferno.explode(position.x, Math.min(position.y, ground + 3), position.z, 2.0);
+    inferno.burst(position, 1.5);
+    dragon.startWreck();
+    this.shake = 2.4;
+    this.audio?.roar(1);
+    this.audio?.setBreathing(false);
+    const heading = this.stage.querySelector('[data-heading]');
+    const subtitle = this.stage.querySelector('[data-subtitle]');
+    if (heading) heading.textContent = 'Crashed';
+    if (subtitle) subtitle.textContent = 'The dragon rises again';
+  }
+
+  private crashFrame(dt: number, world: World): void {
+    const { dragon, inferno } = world;
+    this.crashTime += dt;
+    dragon.wreck(dt);
+    const position = dragon.rig.position;
+    // The wreck burns as it goes: flame and smoke streaming off the body.
+    const burning = Math.max(0, 1 - this.crashTime / 3);
+    for (let index = 0; index < 18 * burning; index += 1) {
+      inferno.fire.emit(position.x + (Math.random() - 0.5) * 5, position.y + (Math.random() - 0.5) * 3, position.z + (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 8, 4 + Math.random() * 8, (Math.random() - 0.5) * 8, 0.6 + Math.random() * 0.6, 4 + Math.random() * 5, FIRE, this.time);
+    }
+    if (Math.random() < 0.6) inferno.smoke.emit(position.x, position.y, position.z, (Math.random() - 0.5) * 4, 6 + Math.random() * 6, (Math.random() - 0.5) * 4, 4 + Math.random() * 3, 12 + Math.random() * 10, SMOKE, this.time);
+    if (Math.random() < 0.5) inferno.fire.emit(position.x, position.y, position.z, (Math.random() - 0.5) * 30, 10 + Math.random() * 25, (Math.random() - 0.5) * 30, 1.2 + Math.random(), 0.6, EMBER, this.time);
+    this.shake = Math.max(this.shake, 1.2 * burning);
+
+    if (this.crashTime >= CRASH_FADE_AT) {
+      const fade = this.stage.querySelector('[data-fade]');
+      if (fade && !fade.hasAttribute('data-on')) {
+        fade.setAttribute('data-on', '');
+        const title = this.stage.querySelector<HTMLElement>('[data-title]');
+        if (title) {
+          title.removeAttribute('data-on');
+          void title.offsetWidth;
+          title.setAttribute('data-on', '');
+        }
+      }
+    }
+    if (this.crashTime >= CRASH_LENGTH) this.respawn(world);
+  }
+
+  /** Out of the clouds again, the same way the dragon first arrived, at full strength. */
+  private respawn(world: World): void {
+    world.dragon.reset(START, -0.42, 95);
+    this.health = MAX_HEALTH;
+    this.sinceHurt = REGEN_DELAY;
+    this.showHealth();
+    this.shake = 0;
+    this.arriveTime = 0;
+    this.wisps = 0;
+    this.phase = 'arrive';
+    this.stage.dataset.phase = 'arrive';
+    this.stage.querySelector('[data-fade]')?.removeAttribute('data-on');
+    this.stage.querySelector('[data-flash]')?.removeAttribute('data-on');
+    const heading = this.stage.querySelector('[data-heading]');
+    const subtitle = this.stage.querySelector('[data-subtitle]');
+    if (heading) heading.textContent = 'Here be dragons';
+    if (subtitle) subtitle.textContent = 'The realm is yours to burn';
+  }
+
+  private approach(kind: BuildingKind, distance: number): boolean {
+    const world = this.world;
+    const target = world?.city.structures.find((structure) => structure.building.kind === kind && structure.state === 'intact');
+    if (!world || !target) return false;
+    const { building } = target;
+    // Come in from the side away from the town centre, level with the middle of the walls.
+    const outward = Math.atan2(building.x - world.city.towns[building.town].site.x, building.z - world.city.towns[building.town].site.z) || 0;
+    const x = building.x + Math.sin(outward) * distance;
+    const z = building.z + Math.cos(outward) * distance;
+    const y = building.y + Math.max(3.2, building.height * 0.5);
+    world.dragon.reset(new THREE.Vector3(x, y, z), 0, world.dragon.speed);
+    world.dragon.yaw = Math.atan2(x - building.x, z - building.z);
+    return true;
   }
 
   private strike(): void {
@@ -557,6 +764,7 @@ class Game {
     const { camera, dragon, inferno, city, fog, sky } = world;
     this.input.update(dt);
     const controls = this.held ? { ...this.input.controls, ...this.held } : this.input.controls;
+    const crashed = this.phase === 'crash';
 
     // After the wormhole the dragon dives out of the cloud on its own, then hands over the reins.
     let handoff = 1;
@@ -570,15 +778,21 @@ class Game {
         this.stage.dataset.phase = 'flight';
       }
     }
-    const armed = handoff > 0.6;
+    const armed = handoff > 0.6 && !crashed;
     const breathing = controls.fire && armed;
-    dragon.update(dt, {
-      steerX: controls.steerX * handoff,
-      steerY: controls.steerY * handoff - 0.5 * (1 - handoff),
-      throttle: controls.throttle * handoff + (1 - handoff),
-      boost: controls.boost && armed,
-      breathing,
-    });
+    if (crashed) {
+      this.crashFrame(dt, world);
+    } else {
+      dragon.update(dt, {
+        steerX: controls.steerX * handoff,
+        steerY: controls.steerY * handoff - 0.5 * (1 - handoff),
+        throttle: controls.throttle * handoff + (1 - handoff),
+        boost: controls.boost && armed,
+        breathing,
+      });
+      this.collide(world);
+      this.regenerate(dt);
+    }
 
     this.shake *= Math.exp(-dt * 3.2);
     const jolt = this.reducedMotion ? 0 : this.shake;

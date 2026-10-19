@@ -464,6 +464,23 @@ export class Inferno {
     return null;
   }
 
+  /** Fire, embers and dust thrown out from a point, with no damage done: the dragon hitting something. */
+  burst(at: THREE.Vector3, size: number): void {
+    for (let index = 0; index < 60 * size; index += 1) {
+      const theta = random() * Math.PI * 2;
+      const up = random();
+      const flat = Math.sqrt(1 - up * up);
+      const speed = (14 + random() * 30) * Math.sqrt(size);
+      this.fire.emit(at.x, at.y, at.z, Math.cos(theta) * flat * speed, up * speed, Math.sin(theta) * flat * speed, 0.4 + random() * 0.6, (4 + random() * 5) * size, FIRE, this.time);
+    }
+    for (let index = 0; index < 30 * size; index += 1) {
+      this.fire.emit(at.x, at.y, at.z, spread(40), 10 + random() * 40, spread(40), 1 + random() * 1.6, 0.5 + random() * 0.5, EMBER, this.time);
+    }
+    for (let index = 0; index < 16 * size; index += 1) {
+      this.smoke.emit(at.x + spread(3), at.y, at.z + spread(3), spread(10), 3 + random() * 6, spread(10), 2 + random() * 2, 8 + random() * 8 * size, DUST, this.time);
+    }
+  }
+
   explode(x: number, y: number, z: number, size: number): void {
     const centre = new THREE.Vector3(x, y, z);
     const radius = BLAST_RADIUS * size;

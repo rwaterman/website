@@ -15,7 +15,11 @@ export interface FlightInput {
 const CRUISE_SPEED = 58;
 const MIN_SPEED = 30;
 const MAX_SPEED = 150;
-const MIN_CLEARANCE = 9;
+/** How far the dragon's belly hangs below the rig; touching the ground means this close. */
+const BELLY = 2.6;
+/** Below this height over the ground the dragon pulls up a little on its own; a steep dive still crashes. */
+const ASSIST_HEIGHT = 22;
+const WRECK_GRAVITY = 32;
 const CEILING = 620;
 const TURN_BACK_START = WORLD_RADIUS - 520;
 const NECK_SEGMENTS = 9;
@@ -159,6 +163,8 @@ export class Dragon {
   wingPhase = 0;
   /** 0 gliding .. 1 flapping hard; the audio follows it. */
   flapPower = 1;
+  /** Downward speed at which the belly hit the ground this frame, or 0. */
+  groundImpact = 0;
 
   private readonly body = new THREE.Group();
   private readonly neck: THREE.Mesh[] = [];
@@ -174,6 +180,7 @@ export class Dragon {
   private sway = 0;
   private nod = 0;
   private jawOpen = 0;
+  private tumble = 0;
 
   constructor() {
     this.rig.rotation.order = 'YXZ';
@@ -263,9 +270,9 @@ export class Dragon {
       this.yaw += Math.sign(error) * Math.min(Math.abs(error), 1) * urgency * 1.6 * dt;
     }
 
-    const floor = Math.max(terrainHeight(position.x, position.z), WATER_LEVEL) + MIN_CLEARANCE;
+    const floor = Math.max(terrainHeight(position.x, position.z), WATER_LEVEL) + BELLY;
     const clearance = position.y - floor;
-    if (clearance < 40 && this.pitch < 0.35) this.pitch += (1 - clearance / 40) * 2.6 * dt;
+    if (clearance < ASSIST_HEIGHT && this.pitch < 0.2) this.pitch += (1 - clearance / ASSIST_HEIGHT) * 1.1 * dt;
     if (position.y > CEILING && this.pitch > -0.2) this.pitch -= ((position.y - CEILING) / 80) * dt * 2;
 
     const target = CRUISE_SPEED + input.throttle * 24 + (input.boost ? 48 : 0);
@@ -275,9 +282,54 @@ export class Dragon {
     this.rig.rotation.set(this.pitch, this.yaw, this.roll);
     this.velocity.set(0, 0, -1).applyEuler(this.rig.rotation).multiplyScalar(this.speed);
     position.addScaledVector(this.velocity, dt);
-    if (position.y < floor) position.y = floor;
+    this.groundImpact = 0;
+    if (position.y < floor) {
+      this.groundImpact = Math.max(0.01, -this.velocity.y);
+      position.y = floor;
+    }
 
     this.animate(dt, input);
+  }
+
+  /** Out of control after a crash: thrown back up off the impact, spinning. */
+  startWreck(): void {
+    this.velocity.y = Math.abs(this.velocity.y) * 0.35 + 9;
+    this.velocity.x *= 0.55;
+    this.velocity.z *= 0.55;
+    this.tumble = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 3);
+  }
+
+  /** One frame of the wreck: gravity, a tumble that dies away, and a slide to rest along the ground. */
+  wreck(dt: number): void {
+    const position = this.rig.position;
+    this.velocity.y -= WRECK_GRAVITY * dt;
+    position.addScaledVector(this.velocity, dt);
+    const floor = Math.max(terrainHeight(position.x, position.z), WATER_LEVEL) + BELLY;
+    if (position.y < floor) {
+      position.y = floor;
+      if (this.velocity.y < 0) this.velocity.y = -this.velocity.y * 0.25;
+      const friction = Math.exp(-dt * 2.5);
+      this.velocity.x *= friction;
+      this.velocity.z *= friction;
+    }
+    this.roll += this.tumble * dt;
+    this.pitch += (0.15 - this.pitch) * Math.min(1, dt * 2);
+    this.tumble *= Math.exp(-dt * 1.4);
+    this.speed = this.velocity.length();
+    this.rig.rotation.set(this.pitch, this.yaw, this.roll);
+    this.flapPower = 0.15;
+    this.animate(dt, { steerX: 0, steerY: 0, throttle: 0, boost: false, breathing: false });
+  }
+
+  /** Back in the saddle at `position`, heading for the middle of the realm. */
+  reset(position: THREE.Vector3, pitch: number, speed: number): void {
+    this.rig.position.copy(position);
+    this.yaw = Math.atan2(position.x, position.z);
+    this.pitch = pitch;
+    this.roll = 0;
+    this.tumble = 0;
+    this.speed = speed;
+    this.groundImpact = 0;
   }
 
   private animate(dt: number, input: FlightInput): void {

@@ -23,6 +23,17 @@ export default defineConfig({
     worker: { format: 'es', rolldownOptions: { external: ['node:module'] } },
     // The dev server only meets that import when the worklet first loads; pre-bundling it then
     // forces a page reload mid-play, and the file is a single ES module already.
-    optimizeDeps: { exclude: ['chiptune3'] },
+    // three.js is only reached through the dragon's dynamic import, so the dev server would discover it
+    // on the first click, re-optimise, and fail that click with a 504. Pre-bundle it up front instead.
+    optimizeDeps: {
+      exclude: ['chiptune3'],
+      include: [
+        'three',
+        'three/addons/postprocessing/EffectComposer.js',
+        'three/addons/postprocessing/OutputPass.js',
+        'three/addons/postprocessing/RenderPass.js',
+        'three/addons/postprocessing/UnrealBloomPass.js',
+      ],
+    },
   },
 });
