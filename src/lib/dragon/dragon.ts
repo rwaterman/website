@@ -112,7 +112,7 @@ function createHead(scales: THREE.Material, dark: THREE.Material, bone: THREE.Ma
     brow.rotation.z = side * -0.25;
     head.add(brow);
 
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 2.6, 0.3) }));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 0.95, 0.12) }));
     eye.position.set(side * 0.82, 0.3, -0.7);
     head.add(eye);
 

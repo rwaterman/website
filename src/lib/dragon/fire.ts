@@ -532,7 +532,7 @@ export class Inferno {
       for (const [index, light] of this.fireLights.entries()) {
         // Spread the lights across the fire front rather than stacking them on adjacent houses.
         const entry = nearest[index * Math.max(1, Math.floor(nearest.length / FIRE_LIGHTS))];
-        light.userData.power = entry ? 5200 : 0;
+        light.userData.power = entry ? 2600 : 0;
         if (entry) light.position.set(entry.structure.building.x, entry.structure.top + 5, entry.structure.building.z);
       }
     }

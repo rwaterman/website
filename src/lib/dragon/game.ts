@@ -225,7 +225,7 @@ class Game {
     const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.quality.samples });
     this.composer = new EffectComposer(this.renderer, target);
     this.renderPass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.75, 0.65, 0.92);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.4, 1.5);
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());

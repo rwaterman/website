@@ -94,9 +94,9 @@ void main() {
     color = mix(vec3(1.0, 0.72, 0.25), vec3(1.0, 0.22, 0.03), vLife) * 4.5 * flicker;
     alpha = pow(1.0 - d, 2.5) * (1.0 - vLife * vLife);
   } else {
-    vec3 hot = vec3(1.0, 0.92, 0.62) * 5.0;
-    vec3 mid = vec3(1.0, 0.42, 0.06) * 3.0;
-    vec3 cool = vec3(0.5, 0.05, 0.01) * 1.1;
+    vec3 hot = vec3(1.0, 0.86, 0.5) * 2.4;
+    vec3 mid = vec3(1.0, 0.38, 0.05) * 1.5;
+    vec3 cool = vec3(0.45, 0.05, 0.01) * 0.6;
     color = vLife < 0.22 ? mix(hot, mid, vLife / 0.22) : mix(mid, cool, (vLife - 0.22) / 0.78);
     alpha = soft * fadeIn * (1.0 - vLife) * (0.65 + 0.35 * vSeed);
   }
