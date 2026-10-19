@@ -313,4 +313,64 @@ test.describe('/fun mod music file museum', () => {
     await expect(museum.locator('[data-tracker-status]')).toContainText('would not play', { timeout: 20_000 });
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
   });
+
+  test('the reel centres the chosen frame under the gate, which names its year and era', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/fun');
+    const museum = page.locator('[data-tracker]');
+    const reel = museum.locator('[data-tracker-list]');
+    const frames = museum.locator('[data-tracker-exhibit]');
+    const dialYear = museum.locator('[data-tracker-dial-year]');
+    const dialEra = museum.locator('[data-tracker-dial-era]');
+    const offCentre = async (index: number): Promise<number> => {
+      const box = await reel.boundingBox();
+      const frame = await frames.nth(index).boundingBox();
+      if (!box || !frame) throw new Error('reel or frame has no box');
+      return Math.abs(frame.x + frame.width / 2 - (box.x + box.width / 2));
+    };
+
+    await frames.nth(6).click();
+    await expect(frames.nth(6)).toHaveAttribute('aria-current', 'true');
+    await expect.poll(() => offCentre(6)).toBeLessThan(2);
+    await expect(dialYear).toHaveText((await frames.nth(6).getAttribute('data-frame-year')) ?? '');
+    await expect(dialEra).toHaveText((await frames.nth(6).getAttribute('data-era-title')) ?? '');
+    await expect(museum.locator('[data-tracker-index]')).toHaveText(/^Exhibit 07 of \d+$/);
+
+    // Arrow keys and End move focus along the reel without choosing; Enter chooses.
+    const last = (await frames.count()) - 1;
+    await page.keyboard.press('End');
+    await expect(frames.nth(last)).toBeFocused();
+    await expect.poll(() => offCentre(last)).toBeLessThan(2);
+    await expect(dialYear).toHaveText((await frames.nth(last).getAttribute('data-frame-year')) ?? '');
+    await expect(frames.nth(6)).toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(frames.nth(last - 1)).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(frames.nth(last - 1)).toHaveAttribute('aria-current', 'true');
+    expect(errors).toEqual([]);
+  });
+
+  test('a loaded module fills the song order, channel count, and time remaining', async ({ page }) => {
+    await stubModArchive(page);
+    await page.goto('/fun');
+    const museum = page.locator('[data-tracker]');
+    const orders = museum.locator('[data-tracker-orders] > li');
+    await expect(orders.first()).toHaveText('--');
+
+    await museum.locator('[data-tracker-toggle]').click();
+    await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
+    await expect(orders).toHaveText(['00']);
+    await expect(orders.first()).toHaveAttribute('data-current', '');
+    await expect(museum.locator('[data-tracker-live="channels"]')).toHaveText('4');
+    await expect(museum.locator('[data-tracker-remaining]')).toHaveText(/^-0:0\d$/);
+  });
+
+  test('the volume setting survives a reload', async ({ page }) => {
+    await page.goto('/fun');
+    const volume = page.locator('[data-tracker-volume]');
+    await expect(volume).toHaveAccessibleName('Volume');
+    await volume.fill('0.3');
+    await page.reload();
+    await expect(volume).toHaveValue('0.3');
+  });
 });

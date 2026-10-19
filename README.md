@@ -50,8 +50,13 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   own link (`/fun#tunnel`) opens the collection. A third tab, Games, is built but empty and
   only rendered when `FUN_GAMES=on` is set at build time.
 - **Fun → Mod Music File Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
-  other formats libopenmpt reads) with a live display: order / pattern / row, speed and tempo,
-  a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
+  other formats libopenmpt reads) with a live display: elapsed and remaining time, order /
+  pattern / row, speed, tempo and channel count, the song's order list, an LED level meter with
+  peak hold per channel, and the pattern scrolling under a fixed playhead. The exhibits run left
+  to right along a film-strip reel above the player: drag or scroll it, and the gate in the
+  middle names the year and era of the frame under it; the chosen frame is centred in the gate
+  and carries a progress bar while it plays. The volume setting is kept in `localStorage`. The
+  page uses the Layout's `wide` option (`--container-wide`, 90rem). Exhibits live in
   `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
   No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
   and nothing is requested before that. Until Play is pressed, choosing an exhibit or using

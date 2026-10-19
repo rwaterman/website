@@ -10,10 +10,16 @@ import { memes, cats } from '../lib/fun';
 
 // The Games tab is built but hidden until there is something to play: FUN_GAMES=on shows it.
 const showGames = process.env.FUN_GAMES === 'on';
+const firstExhibit = exhibits[0];
+const lastExhibit = exhibits.at(-1);
 const tabs = [
-  { id: 'museum', label: 'Mod Music File Museum' },
-  { id: 'shaders', label: 'Shader Collection' },
-  ...(showGames ? [{ id: 'games', label: 'Games' }] : []),
+  {
+    id: 'museum',
+    label: 'Mod Music File Museum',
+    meta: `${exhibits.length} modules, ${firstExhibit?.year}–${lastExhibit?.year}, played live`,
+  },
+  { id: 'shaders', label: 'Shader Collection', meta: `${shaders.length} fragment shaders running in WebGL2` },
+  ...(showGames ? [{ id: 'games', label: 'Games', meta: 'Being built' }] : []),
 ];
 
 // Sections without content are not rendered; drop files or links in and they appear.
@@ -33,16 +39,13 @@ const filters = [
 ---
 
 <Layout
+  wide
   background="hex"
   heading="Fun"
   lede={`The non-work shelf, in two rooms. A museum of ${exhibits.length} tracker modules from the demoscene, performed live, and a collection of ${shaders.length} fragment shaders — open one fullscreen while the music plays, or press M in the shader to start a random module.`}
   description={`A museum of ${exhibits.length} classic tracker modules played live in the browser with a scrolling pattern display, and ${shaders.length} GLSL fragment shaders drafted with generative AI, running in WebGL2.`}
 >
-  <div
-    role="tablist"
-    aria-label="Fun"
-    class="mt-[clamp(2.5rem,5vw,4rem)] flex flex-wrap gap-x-6 gap-y-1 border-b border-rule-strong"
-  >
+  <div role="tablist" aria-label="Fun" class="fun-tabs">
     {
       tabs.map((tab, index) => (
         <button
@@ -51,20 +54,31 @@ const filters = [
           id={`tab-${tab.id}`}
           aria-controls={tab.id}
           aria-selected={index === 0 ? 'true' : 'false'}
+          aria-labelledby={`tab-${tab.id}-label`}
+          aria-describedby={`tab-${tab.id}-meta`}
           tabindex={index === 0 ? 0 : -1}
-          class="-mb-px cursor-pointer border-b-2 border-transparent py-3 font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted hover:text-text aria-selected:border-accent aria-selected:text-text"
+          class="fun-tab"
+          data-tab={tab.id}
         >
-          {tab.label}
+          <span class="fun-tab__emblem" aria-hidden="true">
+            {tab.id === 'museum' && Array.from({ length: 5 }, () => <i />)}
+          </span>
+          <span class="fun-tab__label" id={`tab-${tab.id}-label`}>
+            {tab.label}
+          </span>
+          <span class="fun-tab__meta" id={`tab-${tab.id}-meta`}>
+            {tab.meta}
+          </span>
         </button>
       ))
     }
   </div>
 
-  <section role="tabpanel" id="museum" aria-labelledby="tab-museum" class="scroll-mt-20">
+  <section role="tabpanel" id="museum" aria-labelledby="tab-museum" class="fun-panel scroll-mt-20">
     <TrackerMuseum />
   </section>
 
-  <section role="tabpanel" id="shaders" aria-labelledby="tab-shaders" class="scroll-mt-20" hidden>
+  <section role="tabpanel" id="shaders" aria-labelledby="tab-shaders" class="fun-panel scroll-mt-20" hidden>
     <Section title="Shader Collection">
       <p class="max-w-[36rem] text-muted">
         {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
@@ -130,7 +144,7 @@ const filters = [
 
   {
     showGames && (
-      <section role="tabpanel" id="games" aria-labelledby="tab-games" class="scroll-mt-20" hidden>
+      <section role="tabpanel" id="games" aria-labelledby="tab-games" class="fun-panel scroll-mt-20" hidden>
         <Section title="Games">
           <p class="max-w-[36rem] text-muted">Nothing to play yet. This room is open while the games are being built.</p>
         </Section>

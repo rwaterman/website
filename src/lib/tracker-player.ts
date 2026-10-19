@@ -20,6 +20,8 @@ export class TrackerPlayer {
   /** Id of the newest `play`; events and downloads tagged with an older one are dropped. */
   private request = 0;
   private fetchController: AbortController | undefined;
+  private gain: GainNode | undefined;
+  private volume = 1;
 
   constructor(private readonly handlers: TrackerHandlers) {}
 
@@ -59,6 +61,12 @@ export class TrackerPlayer {
     await this.context?.resume();
   }
 
+  /** Output level from 0 to 1; held until the first `play` creates the audio graph. */
+  setVolume(volume: number): void {
+    this.volume = volume;
+    if (this.gain) this.gain.gain.value = volume;
+  }
+
   async seek(seconds: number): Promise<void> {
     if (this.node) this.send(await this.node, { type: 'seek', seconds });
   }
@@ -85,7 +93,8 @@ export class TrackerPlayer {
     await context.audioWorklet.addModule(workletUrl);
     const node = new AudioWorkletNode(context, 'tracker', { numberOfInputs: 0, outputChannelCount: [2] });
     node.port.onmessage = (event: MessageEvent<TrackerEvent>) => this.relay(event.data);
-    node.connect(context.destination);
+    this.gain = new GainNode(context, { gain: this.volume });
+    node.connect(this.gain).connect(context.destination);
     return node;
   }
 
