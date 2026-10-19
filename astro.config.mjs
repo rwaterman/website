@@ -13,6 +13,8 @@ const dragonEnabled = process.env.SITE !== 'https://rickwaterman.com' || process
 export default defineConfig({
   site: process.env.SITE,
   integrations: [sitemap()],
+  // The dev toolbar floats over the footer in local previews; set to true to bring it back.
+  devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss()],
     // A build-time constant, so a disabled build drops the dragon code instead of hiding it.

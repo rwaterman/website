@@ -65,6 +65,31 @@
       opacity 0.4s ease,
       color 0.4s ease,
       filter 0.4s ease;
+    /* A slow ember glow, so the glyph is findable without hovering over it. */
+    animation: dragon-egg-throb 2.8s ease-in-out infinite;
+  }
+
+  @keyframes dragon-egg-throb {
+    0%,
+    100% {
+      opacity: 0.18;
+      color: var(--color-muted);
+      filter: none;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      color: var(--color-accent);
+      filter: drop-shadow(0 0 5px var(--color-accent));
+      transform: scale(1.12);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dragon-egg {
+      animation: none;
+      opacity: 0.5;
+    }
   }
 
   .dragon-egg svg {
@@ -79,6 +104,7 @@
 
   .dragon-egg:hover,
   .dragon-egg:focus-visible {
+    animation: none;
     opacity: 1;
     color: var(--color-accent);
     filter: drop-shadow(0 0 6px var(--color-accent));
