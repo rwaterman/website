@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { credit, eras, exhibits, yearLabel, type Exhibit } from './tracker-museum.ts';
+import { credit, eras, exhibits, openingExhibit, yearLabel, type Exhibit } from './tracker-museum.ts';
 
 test('eras are in order, each a closed range except the last, which is still running', () => {
   for (const [index, era] of eras.entries()) {
@@ -39,6 +39,11 @@ test('every exhibit carries a credit, an origin, and a reason to be here', () =>
       assert.ok(exhibit[key].trim(), `${exhibit.title}: ${key} is empty`);
     }
   }
+});
+
+test('exactly one exhibit sets the reel when the page loads', () => {
+  assert.equal(exhibits.filter((exhibit) => exhibit.opens).length, 1);
+  assert.ok(exhibits.includes(openingExhibit()));
 });
 
 test('credit and yearLabel format the placard lines', () => {

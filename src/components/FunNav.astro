@@ -1,0 +1,28 @@
+---
+/** The rooms of /fun, styled as tabs; each is its own page. */
+const rooms = [
+  { href: '/fun', label: 'Overview' },
+  { href: '/fun/music', label: 'Mod Music File Museum' },
+  { href: '/fun/shaders', label: 'Shader Collection' },
+];
+
+const current = Astro.url.pathname.replace(/\/$/, '');
+---
+
+<nav aria-label="Fun rooms" class="mt-[clamp(2.5rem,5vw,4rem)] border-b border-rule-strong">
+  <ul class="flex flex-wrap gap-x-6 gap-y-1">
+    {
+      rooms.map((room) => (
+        <li>
+          <a
+            href={room.href}
+            aria-current={room.href === current ? 'page' : undefined}
+            class="-mb-px inline-block border-b-2 border-transparent py-3 font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted no-underline hover:text-text aria-[current=page]:border-accent aria-[current=page]:text-text"
+          >
+            {room.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

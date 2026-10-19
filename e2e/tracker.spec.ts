@@ -1,5 +1,14 @@
-import { expect, test, type Page } from '@playwright/test';
-import { MOD_ARCHIVE, stubModArchive, tinyModule, trackErrors } from './helpers';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expectShaderPainted, MOD_ARCHIVE, stubModArchive, tinyModule, trackErrors, waitForStage } from './helpers';
+
+/** Index of the frame the reel opens on; the exhibit config marks it with `opens`. */
+async function openingIndex(museum: Locator): Promise<number> {
+  const index = await museum
+    .locator('[data-tracker-exhibit]')
+    .evaluateAll((frames) => frames.findIndex((frame) => frame.getAttribute('aria-current') === 'true'));
+  expect(index, 'one frame is current when the page loads').toBeGreaterThanOrEqual(0);
+  return index;
+}
 
 test.describe('/fun mod music file museum', () => {
   // Reduced motion turns the page's fifty software-rendered shaders off, which is what keeps these
@@ -13,13 +22,12 @@ test.describe('/fun mod music file museum', () => {
       if (request.url().includes('modarchive')) downloads.push(request.url());
     });
     await stubModArchive(page);
-    await page.goto('/fun');
+    await page.goto('/fun/music');
 
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
-    const firstExhibit = museum.locator('[data-tracker-exhibit]').first();
-    await expect(firstExhibit).toHaveAttribute('aria-current', 'true');
+    await expect(museum.locator('[data-tracker-exhibit][aria-current="true"]')).toHaveCount(1);
     await expect(toggle).toHaveText('Play');
     await page.waitForLoadState('networkidle');
     expect(downloads).toEqual([]);
@@ -58,16 +66,17 @@ test.describe('/fun mod music file museum', () => {
       if (request.url().includes('modarchive')) downloads.push(new URL(request.url()).searchParams.get('moduleid') ?? '');
     });
     await stubModArchive(page);
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
     const title = museum.locator('[data-tracker-field="title"]');
     const exhibitButtons = museum.locator('[data-tracker-exhibit]');
     const openingTitle = (await title.textContent()) ?? '';
+    const opening = await openingIndex(museum);
 
     await museum.locator('[data-tracker-step="1"]').click();
-    await expect(exhibitButtons.nth(1)).toHaveAttribute('aria-current', 'true');
+    await expect(exhibitButtons.nth(opening + 1)).toHaveAttribute('aria-current', 'true');
     await expect(title).not.toHaveText(openingTitle);
     await exhibitButtons.nth(3).click();
     await expect(exhibitButtons.nth(3)).toHaveAttribute('aria-current', 'true');
@@ -90,7 +99,7 @@ test.describe('/fun mod music file museum', () => {
   test('with motion allowed, the pattern scrolls under a level meter per channel', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await stubModArchive(page);
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     await expect(museum.locator('[data-tracker-still]')).toBeHidden();
 
@@ -107,7 +116,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('pause holds the position and play resumes it', async ({ page }) => {
     await stubModArchive(page);
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
@@ -131,7 +140,7 @@ test.describe('/fun mod music file museum', () => {
   test('moving the position slider seeks, and the readout follows', async ({ page }) => {
     // Speed 31 stretches the fixture to about forty seconds, so only a seek reaches its last quarter this fast.
     await stubModArchive(page, tinyModule(31));
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     const seek = museum.locator('[data-tracker-seek]');
     const row = museum.locator('[data-tracker-live="row"]');
@@ -146,20 +155,41 @@ test.describe('/fun mod music file museum', () => {
     await expect.poll(async () => Number(((await row.textContent()) ?? '').slice(0, 2))).toBeGreaterThanOrEqual(48);
   });
 
+  test('seeking while paused moves the readout and keeps it held', async ({ page }) => {
+    await stubModArchive(page, tinyModule(31));
+    await page.goto('/fun/music');
+    const museum = page.locator('[data-tracker]');
+    const toggle = museum.locator('[data-tracker-toggle]');
+    const row = museum.locator('[data-tracker-live="row"]');
+
+    await toggle.click();
+    await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
+    await expect(row).toHaveText(/^0\d\/63$/);
+    await toggle.click();
+    await expect(museum.locator('[data-tracker-status]')).toHaveText('Paused.');
+
+    await museum.locator('[data-tracker-seek]').fill('30');
+    await expect.poll(async () => Number(((await row.textContent()) ?? '').slice(0, 2))).toBeGreaterThanOrEqual(48);
+    const held = (await row.textContent()) ?? '';
+    await page.waitForTimeout(500);
+    await expect(row).toHaveText(held);
+  });
+
   test('when a piece ends the next exhibit starts', async ({ page }) => {
     await stubModArchive(page);
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     const exhibitButtons = museum.locator('[data-tracker-exhibit]');
     test.skip((await exhibitButtons.count()) < 2, 'needs two exhibits');
     const title = museum.locator('[data-tracker-field="title"]');
-    const firstTitle = (await title.textContent()) ?? '';
+    const openingTitle = (await title.textContent()) ?? '';
+    const opening = await openingIndex(museum);
 
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
-    await expect(exhibitButtons.nth(1)).toHaveAttribute('aria-current', 'true', { timeout: 15_000 });
-    await expect(title).not.toHaveText(firstTitle);
-    await expect(exhibitButtons.first()).not.toHaveAttribute('aria-current', 'true');
+    await expect(exhibitButtons.nth(opening + 1)).toHaveAttribute('aria-current', 'true', { timeout: 15_000 });
+    await expect(title).not.toHaveText(openingTitle);
+    await expect(exhibitButtons.nth(opening)).not.toHaveAttribute('aria-current', 'true');
     await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
   });
 
@@ -167,7 +197,7 @@ test.describe('/fun mod music file museum', () => {
     await page.route(MOD_ARCHIVE, (route) =>
       route.fulfill({ status: 503, body: 'down', headers: { 'access-control-allow-origin': '*' } }),
     );
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('(HTTP 503)', { timeout: 20_000 });
@@ -178,80 +208,87 @@ test.describe('/fun mod music file museum', () => {
     await page.route(MOD_ARCHIVE, (route) =>
       route.fulfill({ body: 'Invalid ID Error', contentType: 'text/html', headers: { 'access-control-allow-origin': '*' } }),
     );
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('(no module at that address)', { timeout: 20_000 });
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
   });
 
-  test('the museum tab opens first; tabs switch rooms and a shader link opens the collection', async ({ page }) => {
+  test('each room is its own page under Fun, and old /fun hash links land in the room that has them', async ({ page }) => {
     const errors = trackErrors(page);
+    const rooms = page.getByRole('navigation', { name: 'Fun rooms' });
+    const primary = page.getByRole('navigation', { name: 'Primary' });
+
     await page.goto('/fun');
-    const museumTab = page.getByRole('tab', { name: 'Mod Music File Museum' });
-    const shadersTab = page.getByRole('tab', { name: 'Shader Collection' });
-    const museum = page.locator('[data-tracker]');
-    const firstTile = page.locator('li[data-shader]').first();
-    await expect(museumTab).toHaveAttribute('aria-selected', 'true');
-    await expect(museum).toBeVisible();
-    await expect(firstTile).toBeHidden();
+    await expect(rooms.locator('[aria-current="page"]')).toHaveText('Overview');
+    await rooms.getByRole('link', { name: 'Mod Music File Museum' }).click();
+    await expect(page).toHaveURL(/\/fun\/music$/);
+    await expect(page.locator('[data-tracker]')).toBeVisible();
+    await expect(rooms.locator('[aria-current="page"]')).toHaveText('Mod Music File Museum');
+    await expect(primary.locator('[aria-current="page"]')).toHaveText('Fun');
 
-    await shadersTab.click();
-    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
-    await expect(museumTab).toHaveAttribute('aria-selected', 'false');
-    await expect(firstTile).toBeVisible();
-    await expect(museum).toBeHidden();
-    await expect(page).toHaveURL(/#shaders$/);
-
-    await page.keyboard.press('ArrowLeft');
-    await expect(museumTab).toHaveAttribute('aria-selected', 'true');
-    await expect(museumTab).toBeFocused();
-    await expect(page).toHaveURL(/#museum$/);
+    await page.goto('/fun#museum');
+    await expect(page).toHaveURL(/\/fun\/music$/);
+    await page.goto('/fun#shaders');
+    await expect(page).toHaveURL(/\/fun\/shaders$/);
+    await expect(page.locator('li[data-shader]').first()).toBeVisible();
 
     await page.goto('/fun#mountains');
+    await expect(page).toHaveURL(/\/fun\/shaders#mountains$/);
     await expect(page.locator('[data-stage-title]')).toHaveText('Ridgelines');
     await page.locator('[data-stage-action="close"]').click();
-    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('li[data-shader="mountains"]')).toBeVisible();
-    await expect(page).toHaveURL(/#shaders$/);
-    await page.reload();
-    await expect(shadersTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-stage]')).toBeHidden();
+    await expect(page).toHaveURL(/\/fun\/shaders$/);
     await expect(page.locator('li[data-shader="mountains"]')).toBeVisible();
     expect(errors).toEqual([]);
   });
 
-  test('the stage’s M key starts a random module, and the museum’s Random shader opens the stage over it', async ({ page }) => {
+  test('the museum’s Random shader opens the stage over the music, and the stage’s M key starts a random module', async ({ page }) => {
     const downloads: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('modarchive')) downloads.push(request.url());
     });
     // Speed 31 keeps the fixture playing for about forty seconds, so it never ends mid-test.
     await stubModArchive(page, tinyModule(31));
-    await page.goto('/fun#shaders');
+    await page.goto('/fun/music');
+    await waitForStage(page);
     const stage = page.locator('[data-stage]');
     const status = page.locator('[data-tracker-status]');
     const title = page.locator('[data-tracker-field="title"]');
 
-    await page.locator('#shaders [data-random-shader]').click();
+    await page.locator('[data-tracker] [data-random-shader]').click();
     await expect(stage).toBeVisible();
+    await expectShaderPainted(stage, 'stage over the museum');
     await page.keyboard.press('m');
     await expect(status).toHaveText('Playing.', { timeout: 20_000 });
+    await expect(stage.locator('[data-stage-status]')).toHaveText(/^♪ /);
     expect(downloads).toHaveLength(1);
     const playing = (await title.textContent()) ?? '';
 
     await page.keyboard.press('Escape');
     await expect(stage).toBeHidden();
+    await expect(page).toHaveURL(/\/fun\/music$/);
     await expect(status).toHaveText('Playing.');
 
-    await page.getByRole('tab', { name: 'Mod Music File Museum' }).click();
     await page.locator('[data-tracker] [data-random-shader]').click();
     await expect(stage).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(stage).toBeHidden();
-    await expect(page).toHaveURL(/#museum$/);
     await expect(status).toHaveText('Playing.');
     await expect(title).toHaveText(playing);
     expect(downloads).toHaveLength(1);
+  });
+
+  test('the shader collection has no Mod control, since it has no museum', async ({ page }) => {
+    await page.goto('/fun/shaders');
+    await waitForStage(page);
+    await page.locator('[data-random-shader]').click();
+    const stage = page.locator('[data-stage]');
+    await expect(stage).toBeVisible();
+    await expect(stage.locator('[data-stage-action="mod"]')).toHaveCount(0);
+    await page.keyboard.press('m');
+    await expect(stage.locator('[data-stage-status]')).toHaveText('');
   });
 
   test('a file libopenmpt cannot read reports an error instead of playing', async ({ page }) => {
@@ -262,10 +299,70 @@ test.describe('/fun mod music file museum', () => {
         headers: { 'access-control-allow-origin': '*' },
       }),
     );
-    await page.goto('/fun');
+    await page.goto('/fun/music');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('would not play', { timeout: 20_000 });
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
+  });
+
+  test('the reel centres the chosen frame under the gate, which names its year and era', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/fun/music');
+    const museum = page.locator('[data-tracker]');
+    const reel = museum.locator('[data-tracker-list]');
+    const frames = museum.locator('[data-tracker-exhibit]');
+    const dialYear = museum.locator('[data-tracker-dial-year]');
+    const dialEra = museum.locator('[data-tracker-dial-era]');
+    const offCentre = async (index: number): Promise<number> => {
+      const box = await reel.boundingBox();
+      const frame = await frames.nth(index).boundingBox();
+      if (!box || !frame) throw new Error('reel or frame has no box');
+      return Math.abs(frame.x + frame.width / 2 - (box.x + box.width / 2));
+    };
+
+    await frames.nth(6).click();
+    await expect(frames.nth(6)).toHaveAttribute('aria-current', 'true');
+    await expect.poll(() => offCentre(6)).toBeLessThan(2);
+    await expect(dialYear).toHaveText((await frames.nth(6).getAttribute('data-frame-year')) ?? '');
+    await expect(dialEra).toHaveText((await frames.nth(6).getAttribute('data-era-title')) ?? '');
+    await expect(museum.locator('[data-tracker-index]')).toHaveText(/^Exhibit 07 of \d+$/);
+
+    // Arrow keys and End move focus along the reel without choosing; Enter chooses.
+    const last = (await frames.count()) - 1;
+    await page.keyboard.press('End');
+    await expect(frames.nth(last)).toBeFocused();
+    await expect.poll(() => offCentre(last)).toBeLessThan(2);
+    await expect(dialYear).toHaveText((await frames.nth(last).getAttribute('data-frame-year')) ?? '');
+    await expect(frames.nth(6)).toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(frames.nth(last - 1)).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(frames.nth(last - 1)).toHaveAttribute('aria-current', 'true');
+    expect(errors).toEqual([]);
+  });
+
+  test('a loaded module fills the song order, channel count, and time remaining', async ({ page }) => {
+    await stubModArchive(page);
+    await page.goto('/fun/music');
+    const museum = page.locator('[data-tracker]');
+    const orders = museum.locator('[data-tracker-orders] > li');
+    await expect(orders.first()).toHaveText('--');
+
+    await museum.locator('[data-tracker-toggle]').click();
+    await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
+    await expect(orders).toHaveText(['00']);
+    await expect(orders.first()).toHaveAttribute('data-current', '');
+    await expect(museum.locator('[data-tracker-live="channels"]')).toHaveText('4');
+    await expect(museum.locator('[data-tracker-remaining]')).toHaveText(/^-0:0\d$/);
+  });
+
+  test('the volume setting survives a reload', async ({ page }) => {
+    await page.goto('/fun/music');
+    const volume = page.locator('[data-tracker-volume]');
+    await expect(volume).toHaveAccessibleName('Volume');
+    await volume.fill('0.3');
+    await page.reload();
+    await expect(volume).toHaveValue('0.3');
   });
 });
