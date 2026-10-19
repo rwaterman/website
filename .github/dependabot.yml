@@ -12,6 +12,10 @@ updates:
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
+    ignore:
+      # @astrojs/check 0.9.x accepts typescript ^5 || ^6 as a peer; a major bump breaks `npm ci`.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
