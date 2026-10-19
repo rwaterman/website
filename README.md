@@ -31,7 +31,7 @@ End-to-end tests live in `e2e/` and need a one-time `npx playwright install chro
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
 CloudFront), and the `/fun` rooms: old `/fun#…` links must land in the right room, every shader in
 `src/shaders/` must compile and paint, the stage's editor must survive a failed compile, the Mod Music
-File Museum must load, play, pause, seek, advance, and report a failed download, and on `/fun/music`
+File Museum must load, play, pause, seek, advance, and report a failed download, and on `/fun`
 the museum and the stage must start each other. Specs that click a stage opener first wait for the
 island to hydrate (`waitForStage` in `e2e/helpers.ts`). The tracker spec
 answers The Mod Archive's download URL with a module it builds in memory, so it never touches
@@ -48,13 +48,13 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`) — the non-work section, linked from the nav: an overview page with the
-  galleries and playlists, and one page per room, `/fun/music` and `/fun/shaders`, joined by a
-  tab-style sub-nav (`src/components/FunNav.astro`). The rooms used to be tabs on `/fun`, so an
-  inline script there sends `/fun#museum`, `/fun#shaders`, and `/fun#<shader id>` to the page
-  that has them now. The fun pages use the Layout's `wide` option (`--container-wide`, 90rem).
-  A Games room is listed but empty, and only when `FUN_GAMES=on` is set at build time.
-- **Fun → Mod Music File Museum** (`/fun/music`) — a player for classic tracker modules (MOD, S3M, XM, IT, and the
+- **Fun** (`/fun`) — the non-work section, linked from the nav. Two rooms, each its own page,
+  joined by tab plates (`src/components/FunNav.astro`): the Mod Music File Museum on `/fun`
+  itself and the Shader Collection on `/fun/shaders`. The rooms used to be tabs on one page, so an
+  inline script on `/fun` sends `/fun#shaders` and `/fun#<shader id>` on to the shader room, and
+  `/fun/music`, the museum's address for a few hours, redirects to `/fun`. The fun pages use the
+  Layout's `wide` option (`--container-wide`, 90rem).
+- **Fun → Mod Music File Museum** (`/fun`) — a player for classic tracker modules (MOD, S3M, XM, IT, and the
   other formats libopenmpt reads) with a live display: elapsed and remaining time, order /
   pattern / row, speed, tempo and channel count, the song's order list, an LED level meter with
   peak hold per channel, and the pattern scrolling under a fixed playhead. The exhibits run left
@@ -89,8 +89,8 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   binds the static tiles and the page background to the engine. Every tile has a
   Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
   UTC day) — all open the fullscreen stage, `src/components/ShaderStage.tsx`, a React island on
-  both rooms. On `/fun/music`, where there is no grid, the stage loads the shader sources once
-  the page has loaded. Stage keys: `←` `→` browse, `R` random, `M` random mod (on `/fun/music`),
+  both rooms. On `/fun`, where there is no grid, the stage loads the shader sources once
+  the page has loaded. Stage keys: `←` `→` browse, `R` random, `M` random mod (on `/fun`),
   `T` tour (a new shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause,
   `Esc` close.
   The editor recompiles the open shader as its GLSL changes and keeps the last good program
@@ -113,7 +113,7 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ```
 src/
-  pages/        index, resume, fun/ (index, music, shaders), links (+ feeds), legal, 404
+  pages/        index, resume, fun/ (index, shaders), links (+ feeds), legal, 404
   components/   Header, Footer, Section, FunNav, TrackerMuseum (.astro);
                 ShaderStage (.tsx, React island)
   layouts/      Layout.astro

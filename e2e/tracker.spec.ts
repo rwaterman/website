@@ -22,7 +22,7 @@ test.describe('/fun mod music file museum', () => {
       if (request.url().includes('modarchive')) downloads.push(request.url());
     });
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
 
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
@@ -66,7 +66,7 @@ test.describe('/fun mod music file museum', () => {
       if (request.url().includes('modarchive')) downloads.push(new URL(request.url()).searchParams.get('moduleid') ?? '');
     });
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
@@ -99,7 +99,7 @@ test.describe('/fun mod music file museum', () => {
   test('with motion allowed, the pattern scrolls under a level meter per channel', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     await expect(museum.locator('[data-tracker-still]')).toBeHidden();
 
@@ -116,7 +116,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('pause holds the position and play resumes it', async ({ page }) => {
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
@@ -140,7 +140,7 @@ test.describe('/fun mod music file museum', () => {
   test('moving the position slider seeks, and the readout follows', async ({ page }) => {
     // Speed 31 stretches the fixture to about forty seconds, so only a seek reaches its last quarter this fast.
     await stubModArchive(page, tinyModule(31));
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const seek = museum.locator('[data-tracker-seek]');
     const row = museum.locator('[data-tracker-live="row"]');
@@ -157,7 +157,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('seeking while paused moves the readout and keeps it held', async ({ page }) => {
     await stubModArchive(page, tinyModule(31));
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const row = museum.locator('[data-tracker-live="row"]');
@@ -177,7 +177,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('when a piece ends the next exhibit starts', async ({ page }) => {
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const exhibitButtons = museum.locator('[data-tracker-exhibit]');
     test.skip((await exhibitButtons.count()) < 2, 'needs two exhibits');
@@ -197,7 +197,7 @@ test.describe('/fun mod music file museum', () => {
     await page.route(MOD_ARCHIVE, (route) =>
       route.fulfill({ status: 503, body: 'down', headers: { 'access-control-allow-origin': '*' } }),
     );
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('(HTTP 503)', { timeout: 20_000 });
@@ -208,31 +208,33 @@ test.describe('/fun mod music file museum', () => {
     await page.route(MOD_ARCHIVE, (route) =>
       route.fulfill({ body: 'Invalid ID Error', contentType: 'text/html', headers: { 'access-control-allow-origin': '*' } }),
     );
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('(no module at that address)', { timeout: 20_000 });
     await expect(museum.locator('[data-tracker-toggle]')).toHaveText('Play');
   });
 
-  test('each room is its own page under Fun, and old /fun hash links land in the room that has them', async ({ page }) => {
+  test('the museum is /fun itself, the shaders are the room beside it, and old links land in the right room', async ({ page }) => {
     const errors = trackErrors(page);
     const rooms = page.getByRole('navigation', { name: 'Fun rooms' });
     const primary = page.getByRole('navigation', { name: 'Primary' });
 
     await page.goto('/fun');
-    await expect(rooms.locator('[aria-current="page"]')).toHaveText('Overview');
-    await rooms.getByRole('link', { name: 'Mod Music File Museum' }).click();
-    await expect(page).toHaveURL(/\/fun\/music$/);
     await expect(page.locator('[data-tracker]')).toBeVisible();
-    await expect(rooms.locator('[aria-current="page"]')).toHaveText('Mod Music File Museum');
+    await expect(rooms.locator('[aria-current="page"] .fun-tab__label')).toHaveText('Mod Music File Museum');
     await expect(primary.locator('[aria-current="page"]')).toHaveText('Fun');
-
-    await page.goto('/fun#museum');
-    await expect(page).toHaveURL(/\/fun\/music$/);
-    await page.goto('/fun#shaders');
+    await rooms.getByRole('link', { name: 'Shader Collection' }).click();
     await expect(page).toHaveURL(/\/fun\/shaders$/);
     await expect(page.locator('li[data-shader]').first()).toBeVisible();
+    await expect(rooms.locator('[aria-current="page"] .fun-tab__label')).toHaveText('Shader Collection');
+    await expect(primary.locator('[aria-current="page"]')).toHaveText('Fun');
+
+    await page.goto('/fun/music/');
+    await expect(page).toHaveURL(/\/fun\/?$/);
+    await expect(page.locator('[data-tracker]')).toBeVisible();
+    await page.goto('/fun#shaders');
+    await expect(page).toHaveURL(/\/fun\/shaders$/);
 
     await page.goto('/fun#mountains');
     await expect(page).toHaveURL(/\/fun\/shaders#mountains$/);
@@ -251,7 +253,7 @@ test.describe('/fun mod music file museum', () => {
     });
     // Speed 31 keeps the fixture playing for about forty seconds, so it never ends mid-test.
     await stubModArchive(page, tinyModule(31));
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     await waitForStage(page);
     const stage = page.locator('[data-stage]');
     const status = page.locator('[data-tracker-status]');
@@ -268,7 +270,7 @@ test.describe('/fun mod music file museum', () => {
 
     await page.keyboard.press('Escape');
     await expect(stage).toBeHidden();
-    await expect(page).toHaveURL(/\/fun\/music$/);
+    await expect(page).toHaveURL(/\/fun$/);
     await expect(status).toHaveText('Playing.');
 
     await page.locator('[data-tracker] [data-random-shader]').click();
@@ -299,7 +301,7 @@ test.describe('/fun mod music file museum', () => {
         headers: { 'access-control-allow-origin': '*' },
       }),
     );
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toContainText('would not play', { timeout: 20_000 });
@@ -308,7 +310,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('the reel centres the chosen frame under the gate, which names its year and era', async ({ page }) => {
     const errors = trackErrors(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const reel = museum.locator('[data-tracker-list]');
     const frames = museum.locator('[data-tracker-exhibit]');
@@ -344,7 +346,7 @@ test.describe('/fun mod music file museum', () => {
 
   test('a loaded module fills the song order, channel count, and time remaining', async ({ page }) => {
     await stubModArchive(page);
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const museum = page.locator('[data-tracker]');
     const orders = museum.locator('[data-tracker-orders] > li');
     await expect(orders.first()).toHaveText('--');
@@ -358,7 +360,7 @@ test.describe('/fun mod music file museum', () => {
   });
 
   test('the volume setting survives a reload', async ({ page }) => {
-    await page.goto('/fun/music');
+    await page.goto('/fun');
     const volume = page.locator('[data-tracker-volume]');
     await expect(volume).toHaveAccessibleName('Volume');
     await volume.fill('0.3');

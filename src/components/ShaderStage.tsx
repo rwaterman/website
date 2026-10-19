@@ -1,5 +1,5 @@
 /**
- * The fullscreen shader stage, on /fun/shaders and /fun/music. It draws through the page's shared
+ * The fullscreen shader stage, on /fun and /fun/shaders. It draws through the page's shared
  * shader engine (src/lib/shader-engine.ts) and is the only thing rendering while open.
  *
  * Openers live in the static page and work through the document: a tile's [data-fullscreen]

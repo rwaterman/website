@@ -13,7 +13,7 @@ const backgroundShader = background ? shaders.find((shader) => shader.id === bac
 if (background && !backgroundShader) throw new Error(`Unknown background shader "${background}"`);
 
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
-// A section's own pages count as it: /fun/music marks Fun.
+// A section's own pages count as it: /fun/shaders marks Fun.
 const isCurrent = (href: string): boolean => {
   if (href.startsWith('http')) return false;
   const path = href.replace(/\/$/, '') || '/';

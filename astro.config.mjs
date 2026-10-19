@@ -14,6 +14,8 @@ const dragonEnabled = process.env.DRAGON !== 'off';
 export default defineConfig({
   site: process.env.SITE,
   integrations: [sitemap(), react()],
+  // The museum lived at /fun/music for a few hours; it is /fun itself now.
+  redirects: { '/fun/music': '/fun' },
   // The dev toolbar floats over the footer in local previews; set to true to bring it back.
   devToolbar: { enabled: false },
   vite: {

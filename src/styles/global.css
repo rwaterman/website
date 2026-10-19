@@ -65,10 +65,6 @@
     font-feature-settings: 'ss02', 'cv01';
   }
 
-  main {
-    counter-reset: section;
-  }
-
   h1,
   h2,
   h3 {
@@ -144,7 +140,7 @@
     @apply block w-full rounded-[3px] border border-rule-strong bg-surface px-3 py-2 text-text;
   }
 
-  /* Numbered section: "01 ▌ TITLE ────────── more →". Counter resets per <main>. */
+  /* Section head: "TITLE ────────── more →". */
   .section {
     @apply mt-[clamp(3.5rem,8vw,6rem)];
   }
@@ -155,12 +151,6 @@
 
   .section-head {
     @apply mb-6 flex items-baseline gap-4;
-  }
-
-  .section-head::before {
-    counter-increment: section;
-    content: counter(section, decimal-leading-zero);
-    @apply border-r-[3px] border-accent pr-[0.6em] font-mono text-label font-medium leading-none text-accent;
   }
 
   .section-head > h2 {
@@ -275,6 +265,97 @@
 
   [data-stage][data-idle] [data-stage-bar]:not(:focus-within) {
     opacity: 0;
+  }
+
+  /* The /fun rooms as tab plates standing on a rule; each plate links to its room's page. The
+     current plate takes the accent bar along its top and opens into the panel by covering the rule. */
+  .fun-tabs {
+    @apply mt-[clamp(2.5rem,5vw,4rem)] flex flex-wrap items-end gap-2 border-b border-rule-strong;
+  }
+
+  .fun-tab {
+    @apply relative -mb-px grid cursor-pointer no-underline grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1
+      rounded-t-[6px] border border-b-0 border-rule px-5 pt-4 pb-[1.05rem] text-left text-muted
+      transition-colors duration-150;
+    flex: 0 1 24rem;
+    min-width: min(100%, 17rem);
+    background: color-mix(in oklab, var(--color-surface) 55%, transparent);
+  }
+
+  .fun-tab::before {
+    content: '';
+    @apply absolute -inset-x-px -top-px h-[3px] origin-left scale-x-0 rounded-t-[6px] bg-accent transition-transform duration-300;
+  }
+
+  .fun-tab:hover {
+    @apply border-rule-strong text-text;
+    background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  }
+
+  .fun-tab[aria-current='page'] {
+    @apply border-rule-strong bg-surface text-text;
+    box-shadow: 0 1px 0 var(--color-surface);
+  }
+
+  .fun-tab[aria-current='page']::before {
+    @apply scale-x-100;
+  }
+
+  .fun-tab__emblem {
+    @apply row-span-2 flex size-11 items-end justify-center gap-[3px] rounded-[4px] border border-rule bg-bg p-2.5;
+  }
+
+  .fun-tab__emblem > i {
+    @apply block w-[3px] origin-bottom rounded-[1px] bg-current;
+    height: var(--bar, 50%);
+  }
+
+  .fun-tab__emblem > i:nth-child(1) { --bar: 45%; --step: 0; }
+  .fun-tab__emblem > i:nth-child(2) { --bar: 80%; --step: 1; }
+  .fun-tab__emblem > i:nth-child(3) { --bar: 60%; --step: 2; }
+  .fun-tab__emblem > i:nth-child(4) { --bar: 95%; --step: 3; }
+  .fun-tab__emblem > i:nth-child(5) { --bar: 35%; --step: 4; }
+
+  .fun-tab[aria-current='page'] .fun-tab__emblem {
+    @apply border-rule-strong text-accent;
+  }
+
+  /* The museum's equalizer moves only while a module is playing. */
+  html[data-tracker-playing] .fun-tab__emblem > i {
+    animation: fun-tab-eq 0.9s ease-in-out infinite;
+    animation-delay: calc(var(--step) * -0.19s);
+  }
+
+  @keyframes fun-tab-eq {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  .fun-tab[data-tab='shaders'] .fun-tab__emblem {
+    background: conic-gradient(from 210deg, #f0685c, #f2b45e, #6fd3c1, #6d8cf0, #c46df0, #f0685c);
+    opacity: 0.6;
+  }
+
+  .fun-tab[data-tab='shaders'][aria-current='page'] .fun-tab__emblem,
+  .fun-tab[data-tab='shaders']:hover .fun-tab__emblem {
+    opacity: 1;
+  }
+
+  .fun-tab__label {
+    @apply font-display text-[1.3rem] leading-[1.05] font-bold uppercase tracking-[0.01em];
+  }
+
+  .fun-tab__meta {
+    @apply text-small text-muted;
+  }
+
+  .fun-panel > .section:first-child {
+    @apply mt-[clamp(2rem,4vw,3rem)];
   }
 
   /* Museum reel on /fun: a 35 mm strip, one frame per exhibit, oldest on the left. The film

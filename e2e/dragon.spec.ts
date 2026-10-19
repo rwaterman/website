@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { stubModArchive, trackErrors } from './helpers';
+import { trackErrors } from './helpers';
 
 const stage = '[data-dragon-stage]';
 
@@ -56,7 +56,6 @@ test.describe('dragon easter egg', () => {
   test('wakes from the footer glyph, flies, and leaves the page as it was', async ({ page }) => {
     test.setTimeout(180_000);
     const errors = trackErrors(page);
-    await stubModArchive(page);
     await page.goto('/legal');
     const scrollBefore = await page.evaluate(() => {
       document.querySelector('[data-dragon-egg]')?.scrollIntoView();
@@ -68,9 +67,6 @@ test.describe('dragon easter egg', () => {
     await expect(page.locator(stage)).toHaveAttribute('data-phase', 'flight');
     expect(await data(page, 'total')).toBeGreaterThan(300);
     await expect(page.locator(`${stage} [data-health]`)).toHaveAttribute('aria-valuenow', '100');
-    // The soundtrack starts with its credit; the download itself is stubbed.
-    await expect(page.locator(stage)).toHaveAttribute('data-track', 'Dungeons of Splendor');
-    await expect(page.locator(`${stage} [data-credit] a`).first()).toHaveAttribute('href', /modarchive\.org.*167789/);
     expect(await paintedNow(page)).toBe(true);
 
     await page.keyboard.press('Escape');
@@ -84,7 +80,6 @@ test.describe('dragon easter egg', () => {
   test('the header tag stays invisible until hovered, then wakes the dragon like the glyph', async ({ page }) => {
     test.setTimeout(180_000);
     const errors = trackErrors(page);
-    await stubModArchive(page);
     await page.goto('/legal');
     const tag = page.locator('[data-dragon-tag]');
     await expect(tag).toHaveCSS('opacity', '0');
@@ -106,7 +101,6 @@ test.describe('dragon easter egg', () => {
   test('a fireball razes buildings and they come down in pieces', async ({ page }) => {
     test.setTimeout(180_000);
     const errors = trackErrors(page);
-    await stubModArchive(page);
     await page.goto('/legal');
     await wakeTheDragon(page);
     await fly(page, 320);
@@ -120,7 +114,6 @@ test.describe('dragon easter egg', () => {
   test('flying through a building costs health, and diving into the ground crashes and respawns', async ({ page }) => {
     test.setTimeout(240_000);
     const errors = trackErrors(page);
-    await stubModArchive(page);
     await page.goto('/legal');
     await wakeTheDragon(page);
     await fly(page, 320);

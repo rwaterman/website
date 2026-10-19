@@ -1,35 +1,12 @@
 ---
-import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
-import Section from '../../components/Section.astro';
 import FunNav from '../../components/FunNav.astro';
-import { playlists } from '../../config/site';
+import ShaderStage from '../../components/ShaderStage';
+import TrackerMuseum from '../../components/TrackerMuseum.astro';
 import { shaders } from '../../config/shaders';
 import { exhibits } from '../../config/tracker-museum';
-import { memes, cats } from '../../lib/fun';
 
-// The Games room is listed but empty until there is something to play: FUN_GAMES=on shows it.
-const showGames = process.env.FUN_GAMES === 'on';
-const rooms = [
-  {
-    href: '/fun/music',
-    title: 'Mod Music File Museum',
-    blurb: `${exhibits.length} tracker modules from the Amiga and PC demoscenes, performed live in your browser with the pattern scrolling past.`,
-  },
-  {
-    href: '/fun/shaders',
-    title: 'Shader Collection',
-    blurb: `${shaders.length} GLSL fragment shaders running in WebGL2. Open any of them fullscreen, edit the source, and watch it recompile.`,
-  },
-  ...(showGames ? [{ href: undefined, title: 'Games', blurb: 'Nothing to play yet. This room is open while the games are being built.' }] : []),
-];
-
-// Sections without content are not rendered; drop files or links in and they appear.
-const galleries = [
-  { title: 'Memes', images: memes },
-  { title: 'Cat Photos', images: cats },
-].filter((gallery) => gallery.images.length > 0);
-
+const stageShaders = shaders.map(({ id, title, caption }) => ({ id, title, caption }));
 const shaderIds = shaders.map((shader) => shader.id);
 ---
 
@@ -41,63 +18,18 @@ const shaderIds = shaders.map((shader) => shader.id);
 >
   <script is:inline define:vars={{ shaderIds }}>
     // /fun once held both rooms as tabs, and the stage's Link button copied /fun#<shader> links.
-    const hash = location.hash.slice(1);
-    const room = { museum: '/fun/music', shaders: '/fun/shaders' }[hash];
-    if (room) location.replace(room);
-    else if (shaderIds.includes(hash)) location.replace(`/fun/shaders#${hash}`);
+    const forward = () => {
+      const hash = location.hash.slice(1);
+      if (hash === 'shaders') location.replace('/fun/shaders');
+      else if (shaderIds.includes(hash)) location.replace(`/fun/shaders#${hash}`);
+    };
+    forward();
+    addEventListener('hashchange', forward);
   </script>
 
   <FunNav />
-
-  <Section title="Rooms">
-    <ul class="card-grid grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
-      {
-        rooms.map((room) => (
-          <li class="card">
-            <h3 class="text-h3 font-semibold">
-              {room.href ? (
-                <a href={room.href}>
-                  {room.title} <span aria-hidden="true">→</span>
-                </a>
-              ) : (
-                room.title
-              )}
-            </h3>
-            <p class="text-muted">{room.blurb}</p>
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
-
-  {
-    galleries.map((gallery) => (
-      <Section title={gallery.title}>
-        <ul class="card-grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-          {gallery.images.map((image) => (
-            <li class="tile [--tile-ratio:1]">
-              <Image src={image.src} alt={image.alt} widths={[320, 480, 640]} sizes="(min-width: 64rem) 14rem, 45vw" />
-            </li>
-          ))}
-        </ul>
-      </Section>
-    ))
-  }
-
-  {
-    playlists.length > 0 && (
-      <Section title="Playlists">
-        <ul class="rows [--rows-key:9rem]">
-          {playlists.map((playlist) => (
-            <li>
-              <span class="chip justify-self-start">{playlist.service}</span>
-              <a class="font-semibold" href={playlist.href} target="_blank" rel="noopener noreferrer">
-                {playlist.title} <span aria-hidden="true">↗</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </Section>
-    )
-  }
+  <div class="fun-panel">
+    <TrackerMuseum />
+  </div>
+  <ShaderStage client:load shaders={stageShaders} music />
 </Layout>

@@ -1,28 +1,44 @@
 ---
-/** The rooms of /fun, styled as tabs; each is its own page. */
+/** The rooms of /fun as tab plates. Each is its own page; the museum is /fun itself. */
+import { shaders } from '../config/shaders';
+import { exhibits } from '../config/tracker-museum';
+
+const oldest = exhibits[0];
+const newest = exhibits.at(-1);
 const rooms = [
-  { href: '/fun', label: 'Overview' },
-  { href: '/fun/music', label: 'Mod Music File Museum' },
-  { href: '/fun/shaders', label: 'Shader Collection' },
+  {
+    id: 'museum',
+    href: '/fun',
+    label: 'Mod Music File Museum',
+    meta: `${exhibits.length} modules, ${oldest?.year}–${newest?.year}, played live`,
+  },
+  { id: 'shaders', href: '/fun/shaders', label: 'Shader Collection', meta: `${shaders.length} fragment shaders running in WebGL2` },
 ];
 
 const current = Astro.url.pathname.replace(/\/$/, '');
 ---
 
-<nav aria-label="Fun rooms" class="mt-[clamp(2.5rem,5vw,4rem)] border-b border-rule-strong">
-  <ul class="flex flex-wrap gap-x-6 gap-y-1">
-    {
-      rooms.map((room) => (
-        <li>
-          <a
-            href={room.href}
-            aria-current={room.href === current ? 'page' : undefined}
-            class="-mb-px inline-block border-b-2 border-transparent py-3 font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted no-underline hover:text-text aria-[current=page]:border-accent aria-[current=page]:text-text"
-          >
-            {room.label}
-          </a>
-        </li>
-      ))
-    }
-  </ul>
+<nav aria-label="Fun rooms" class="fun-tabs">
+  {
+    rooms.map((room) => (
+      <a
+        href={room.href}
+        class="fun-tab"
+        data-tab={room.id}
+        aria-current={room.href === current ? 'page' : undefined}
+        aria-labelledby={`tab-${room.id}-label`}
+        aria-describedby={`tab-${room.id}-meta`}
+      >
+        <span class="fun-tab__emblem" aria-hidden="true">
+          {room.id === 'museum' && Array.from({ length: 5 }, () => <i />)}
+        </span>
+        <span class="fun-tab__label" id={`tab-${room.id}-label`}>
+          {room.label}
+        </span>
+        <span class="fun-tab__meta" id={`tab-${room.id}-meta`}>
+          {room.meta}
+        </span>
+      </a>
+    ))
+  }
 </nav>

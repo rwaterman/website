@@ -21,18 +21,17 @@ const stageShaders = shaders.map(({ id, title, caption }) => ({ id, title, capti
   wide
   background="kaleido"
   title="Shader Collection"
-  eyebrow="Fun"
-  heading="Shaders"
-  lede="Small programs that paint every pixel of a frame, sixty times a second. Filter by kind, open one fullscreen, edit it, and save a frame as a PNG."
+  heading="Fun"
   description={`${shaders.length} GLSL fragment shaders drafted with generative AI, running live in WebGL2 with a fullscreen stage and live editor.`}
 >
   <FunNav />
+  <div class="fun-panel">
   <Section title="Shader Collection">
     <p class="max-w-[36rem] text-muted">
       {shaders.length} fragment shaders drafted with generative AI and tuned by hand, running live in WebGL2 —
       one fullscreen triangle, three uniforms, no libraries. Every tile goes fullscreen, where the source is
       editable and recompiles as you type. Each shader has its own link. For music underneath, open the{' '}
-      <a href="/fun/music">Mod Music File Museum</a> and press Random shader there.
+      <a href="/fun">Mod Music File Museum</a> and press Random shader there.
     </p>
     <div class="mt-6 flex flex-wrap items-center gap-3">
       <button type="button" class="button" data-random-shader>Random shader, fullscreen</button>
@@ -89,6 +88,7 @@ const stageShaders = shaders.map(({ id, title, caption }) => ({ id, title, capti
       }
     </ul>
   </Section>
+  </div>
   <ShaderStage client:load shaders={stageShaders} />
 </Layout>
 

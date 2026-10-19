@@ -13,7 +13,6 @@ import type { VoiceStats } from './audition';
 import { City, type Structure } from './city';
 import type { BuildingKind } from './layout';
 import { Dragon } from './dragon';
-import { DragonMusic, trackPage, type Track } from './music';
 import { Inferno, type FireQuality } from './fire';
 import { createInput, type Controls, type Input, type InputDevice } from './input';
 import { FOLD_START, Intro, INTRO_LENGTH, RIP_START, WORMHOLE_START } from './intro';
@@ -149,10 +148,6 @@ html.dragon-active body { display: none !important; }
 @keyframes dragon-hurt { from { opacity: 1; } to { opacity: 0; } }
 .dragon-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.1s ease; }
 .dragon-fade[data-on] { opacity: 1; }
-.dragon-credit { position: absolute; top: calc(max(0.8rem, env(safe-area-inset-top)) + 2.9rem); right: max(0.9rem, env(safe-area-inset-right)); max-width: min(60vw, 22rem); margin: 0; font-family: var(--font-mono, monospace); font-size: 0.66rem; letter-spacing: 0.08em; line-height: 1.5; text-align: right; text-transform: uppercase; text-shadow: 0 1px 6px #000; opacity: 0.85; transition: opacity 2.5s ease; }
-.dragon-credit[data-dim] { opacity: 0.35; }
-.dragon-credit a { pointer-events: auto; color: #ffb35c; text-decoration: none; }
-.dragon-credit a:hover { text-decoration: underline; }
 .dragon-pause { position: absolute; inset: 0; display: grid; place-content: center; gap: 0.6rem; background: rgba(6, 2, 1, 0.6); text-align: center; text-transform: uppercase; letter-spacing: 0.16em; pointer-events: auto; cursor: pointer; }
 .dragon-pause strong { font-size: 2rem; }
 .dragon-pause span { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: #ffb35c; }
@@ -170,7 +165,6 @@ const HUD = /* html */ `
   <div class="dragon-hurt" data-hurt></div>
   <div class="dragon-title" data-title><h2 data-heading></h2><p data-subtitle></p></div>
   <p class="dragon-keys" data-keys></p>
-  <p class="dragon-credit" data-credit></p>
   <button class="dragon-button dragon-bomb" type="button" data-bomb hidden>Bomb</button>
   <button class="dragon-button dragon-fire" type="button" data-fire hidden>Fire</button>
   <button class="dragon-button dragon-boostbtn" type="button" data-boost-button hidden>Boost</button>
@@ -217,9 +211,6 @@ class Game {
   private readonly quality: Quality;
   private readonly input: Input;
   private readonly audio: DragonAudio | null;
-  private readonly music = new DragonMusic((track) => this.showCredit(track));
-  private musicMuted = false;
-  private creditTimer = 0;
   private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly scrollTop = scrollY;
   private readonly builder: Generator<void, World>;
@@ -302,8 +293,7 @@ class Game {
     this.input = createInput(this.stage, this.abort.signal, {
       onExit: () => this.stop(),
       onMute: () => {
-        this.musicMuted = this.audio ? this.audio.toggleMute() : !this.musicMuted;
-        this.music.setMuted(this.musicMuted);
+        this.audio?.toggleMute();
       },
       onFireball: () => {
         this.fireballQueued = true;
@@ -438,9 +428,7 @@ class Game {
     if (panel) panel.hidden = !paused;
     if (paused) {
       void this.audio?.suspend();
-      void this.runMusic(() => this.music.pause());
     } else {
-      void this.runMusic(() => this.music.resume());
       if (this.audio) void this.resumeAudio(this.audio);
       this.input.requestLock();
       this.last = performance.now();
@@ -612,7 +600,6 @@ class Game {
     document.documentElement.classList.add('dragon-active');
     this.intro?.dispose();
     const cinematic = this.intro !== null;
-    this.music.start();
     this.intro = null;
 
     this.renderPass.scene = world.scene;
@@ -1100,8 +1087,6 @@ class Game {
     window.scrollTo({ top: this.scrollTop, behavior: 'instant' });
 
     void this.closeAudio();
-    void this.runMusic(() => this.music.dispose());
-    window.clearTimeout(this.creditTimer);
     window.clearTimeout(this.hintTimer);
     this.world?.scene.traverse((object) => {
       const mesh = object as THREE.Mesh;
@@ -1121,34 +1106,6 @@ class Game {
     (returnFocus ?? document.querySelector<HTMLElement>('[data-dragon-egg]'))?.focus({ preventScroll: true });
   }
 
-  /** Music is a nicety: a failure is logged and the flight goes on. */
-  private async runMusic(action: () => Promise<void>): Promise<void> {
-    try {
-      await action();
-    } catch (error) {
-      console.warn('Dragon: the soundtrack misbehaved.', error);
-    }
-  }
-
-  /** The attribution the licenses ask for: title, artist, license and source, shown while the track plays. */
-  private showCredit(track: Track): void {
-    const credit = this.stage.querySelector<HTMLElement>('[data-credit]');
-    if (!credit) return;
-    credit.replaceChildren();
-    const link = (text: string, href: string): HTMLAnchorElement => {
-      const anchor = document.createElement('a');
-      anchor.href = href;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener';
-      anchor.textContent = text;
-      return anchor;
-    };
-    credit.append('\u266a ', link(track.title, trackPage(track)), ` by ${track.artist} \u00b7 `, link(track.license, track.licenseUrl), ' \u00b7 via The Mod Archive');
-    credit.removeAttribute('data-dim');
-    window.clearTimeout(this.creditTimer);
-    this.creditTimer = window.setTimeout(() => credit.setAttribute('data-dim', ''), 9000);
-    this.stage.dataset.track = track.title;
-  }
 
   private async closeAudio(): Promise<void> {
     try {
