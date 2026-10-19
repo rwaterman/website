@@ -1,4 +1,5 @@
 ---
+import DragonTag from './DragonTag.astro';
 import { site, nav } from '../config/site';
 import { shaders } from '../config/shaders';
 
@@ -48,6 +49,7 @@ const isCurrent = (href: string): boolean => {
       </svg>
       <span class="font-display text-[1.35rem] font-bold uppercase leading-none tracking-[0.02em]">{site.name}</span>
     </a>
+    {__DRAGON_ENABLED__ && <DragonTag />}
 
     <nav class="col-span-2 min-w-0 lg:col-auto lg:ml-auto" aria-label="Primary">
       <ul

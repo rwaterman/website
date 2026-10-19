@@ -202,6 +202,8 @@ function pickQuality(renderer: THREE.WebGLRenderer): Quality {
 }
 
 let active: Game | null = null;
+/** The trigger that woke the dragon; focus goes back to it when the flight ends. */
+let returnFocus: HTMLElement | undefined;
 
 class Game {
   private readonly abort = new AbortController();
@@ -1116,7 +1118,7 @@ class Game {
     this.renderer.forceContextLoss();
     this.stage.remove();
     this.style.remove();
-    document.querySelector<HTMLElement>('[data-dragon-egg]')?.focus({ preventScroll: true });
+    (returnFocus ?? document.querySelector<HTMLElement>('[data-dragon-egg]'))?.focus({ preventScroll: true });
   }
 
   /** Music is a nicety: a failure is logged and the flight goes on. */
@@ -1157,9 +1159,13 @@ class Game {
   }
 }
 
-/** Starts the easter egg. `origin` is where the glyph was clicked, in viewport pixels. */
-export function startDragon(origin: { x: number; y: number }): void {
+/**
+ * Starts the easter egg. `origin` is where the trigger was clicked, in viewport pixels; `trigger`
+ * gets focus back when the flight ends.
+ */
+export function startDragon(origin: { x: number; y: number }, trigger?: HTMLElement): void {
   if (active) return;
+  returnFocus = trigger;
   document.dispatchEvent(new CustomEvent('tracker:pause'));
   active = new Game(origin);
 }
