@@ -93,7 +93,9 @@ export function createInput(surface: HTMLElement, signal: AbortSignal, handlers:
     try {
       await surface.requestPointerLock();
     } catch (error) {
-      // Refused (no user gesture left, or an embedding that forbids it): steer by pointer position instead.
+      // Refused (no user gesture left, Chrome's cool-down right after Esc, or an embedding that forbids
+      // it): steer by pointer position instead, even if an earlier lock had switched that off.
+      everLocked = false;
       console.info('Dragon: pointer lock unavailable, steering by pointer position.', error);
     }
   };
@@ -131,8 +133,16 @@ export function createInput(surface: HTMLElement, signal: AbortSignal, handlers:
   window.addEventListener('blur', () => keys.clear(), { signal });
 
   listen('pointerlockchange', () => {
-    if (input.locked) everLocked = true;
-    else if (everLocked) handlers.onLockLost();
+    if (input.locked) {
+      everLocked = true;
+      return;
+    }
+    if (!everLocked) return;
+    // The virtual stick only recentres while locked; without this it would hold the last deflection.
+    mouse.x = 0;
+    mouse.y = 0;
+    mouse.fire = false;
+    handlers.onLockLost();
   });
 
   listen('mousemove', (event) => {

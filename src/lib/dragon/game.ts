@@ -640,7 +640,7 @@ class Game {
     }
 
     city.spinBlades(dt);
-    inferno.update(dt, this.time, camera, this.pixelScale, fog);
+    inferno.update(dt, this.time, this.cameraPosition, this.pixelScale, fog);
     world.clouds.update(this.time, this.pixelScale, fog);
 
     this.slowTimer -= dt;
@@ -775,5 +775,6 @@ class Game {
 /** Starts the easter egg. `origin` is where the glyph was clicked, in viewport pixels. */
 export function startDragon(origin: { x: number; y: number }): void {
   if (active) return;
+  document.dispatchEvent(new CustomEvent('tracker:pause'));
   active = new Game(origin);
 }

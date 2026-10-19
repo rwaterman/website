@@ -150,10 +150,6 @@ export class Inferno {
     this.group.add(this.breathLight);
   }
 
-  get burningCount(): number {
-    return this.city.burning.size;
-  }
-
   /** One frame of dragon breath from `origin` along `direction`; `inherit` is the dragon's velocity. */
   breathe(origin: THREE.Vector3, direction: THREE.Vector3, inherit: THREE.Vector3, dt: number): void {
     this.breathCarry += this.quality.breathRate * dt;
@@ -364,15 +360,16 @@ export class Inferno {
     this.events.explosion(centre, size);
   }
 
-  update(dt: number, time: number, camera: THREE.PerspectiveCamera, pixelScale: number, fog: THREE.FogExp2): void {
+  /** `viewer` is the camera's world position: the camera rides the dragon, so its own position is local. */
+  update(dt: number, time: number, viewer: THREE.Vector3, pixelScale: number, fog: THREE.FogExp2): void {
     this.time = time;
     this.breathLight.intensity *= Math.exp(-dt * 14);
     this.updateFireballs(dt);
-    this.updateBurning(dt, camera.position);
+    this.updateBurning(dt, viewer);
     this.updateGroundFires(dt);
     this.updateDebris(dt);
     this.updateEffects(dt);
-    this.updateLights(dt, camera.position);
+    this.updateLights(dt, viewer);
     this.fire.update(time, pixelScale, fog);
     this.smoke.update(time, pixelScale, fog);
   }
