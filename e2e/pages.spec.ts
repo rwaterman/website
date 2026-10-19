@@ -17,7 +17,7 @@ const pages: PageCase[] = [
   { path: '/links', title: 'Links · Rick Waterman', heading: 'Links', background: 'waves', current: 'Links' },
   { path: '/contact', title: 'Contact · Rick Waterman', heading: 'Contact', background: 'mountains', current: 'Contact' },
   { path: '/legal', title: 'Legal · Rick Waterman', heading: 'Legal', background: 'clouds' },
-  { path: '/fun', title: 'Fun · Rick Waterman', heading: 'Fun', background: 'hex', current: 'Fun' },
+  { path: '/fun', title: 'Fun · Rick Waterman', heading: 'Fun', background: 'lissajous', current: 'Fun' },
 ];
 const notFound: PageCase = { path: '/no-such-page', title: '404 · Rick Waterman', heading: 'Not found', background: 'blackhole' };
 

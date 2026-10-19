@@ -1,6 +1,7 @@
 ---
 // Easter egg: a faint glyph in the footer that turns the site into a dragon flight (src/lib/dragon).
-// Rendered only when __DRAGON_ENABLED__ is true; see astro.config.mjs.
+// Rendered only when __DRAGON_ENABLED__ is true; see astro.config.mjs. The launcher it shares with
+// the header's hover tag is src/lib/dragon/egg.ts.
 ---
 
 <button type="button" class="dragon-egg" data-dragon-egg aria-label="Wake the dragon" title="Here be dragons">
@@ -13,40 +14,7 @@
 </button>
 
 <script>
-  if (__DRAGON_ENABLED__) {
-    const button = document.querySelector<HTMLButtonElement>('[data-dragon-egg]');
-    const load = () => import('../lib/dragon/game');
-
-    const launch = async (origin: { x: number; y: number }): Promise<void> => {
-      try {
-        const { startDragon } = await load();
-        startDragon(origin);
-      } catch (error) {
-        console.error('The dragon easter egg failed to start; the page is unchanged.', error);
-      }
-    };
-
-    // Warm the chunk as soon as the glyph is found, so the click itself feels instant.
-    const warm = async (): Promise<void> => {
-      try {
-        await load();
-      } catch (error) {
-        console.warn('Dragon easter egg chunk failed to preload; it will load on click.', error);
-      }
-    };
-    button?.addEventListener('pointerenter', () => void warm(), { once: true });
-    button?.addEventListener('focus', () => void warm(), { once: true });
-
-    button?.addEventListener('click', (event) => {
-      // A keyboard click has no pointer position: start the fire at the glyph itself.
-      const box = button.getBoundingClientRect();
-      const keyboard = event.detail === 0;
-      void launch({
-        x: keyboard ? box.left + box.width / 2 : event.clientX,
-        y: keyboard ? box.top + box.height / 2 : event.clientY,
-      });
-    });
-  }
+  import '../lib/dragon/egg';
 </script>
 
 <style>

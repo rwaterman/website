@@ -3,9 +3,9 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
 
-// The dragon easter egg (footer glyph, src/lib/dragon) ships in every build except prod.
-// DRAGON=on turns it on for a prod build without a code change.
-const dragonEnabled = process.env.SITE !== 'https://rickwaterman.com' || process.env.DRAGON === 'on';
+// The dragon easter egg (footer glyph and header tag, src/lib/dragon) ships in every build,
+// prod included. DRAGON=off leaves it out of a build without a code change.
+const dragonEnabled = process.env.DRAGON !== 'off';
 
 // https://astro.build/config
 // `site` is provided per environment at build time (https://dev.rickwaterman.com

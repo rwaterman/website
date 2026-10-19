@@ -81,6 +81,28 @@ test.describe('dragon easter egg', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the header tag stays invisible until hovered, then wakes the dragon like the glyph', async ({ page }) => {
+    test.setTimeout(180_000);
+    const errors = trackErrors(page);
+    await stubModArchive(page);
+    await page.goto('/legal');
+    const tag = page.locator('[data-dragon-tag]');
+    await expect(tag).toHaveCSS('opacity', '0');
+    await tag.hover();
+    await expect(tag).toHaveCSS('opacity', '1');
+
+    await tag.click();
+    await expect(page.locator(stage)).toBeAttached();
+    await page.waitForTimeout(900);
+    await page.locator(stage).click({ position: { x: 300, y: 300 } });
+    await expect(page.locator(stage)).toHaveAttribute('data-phase', /^(arrive|flight)$/, { timeout: 90_000 });
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator(stage)).toHaveCount(0);
+    await expect(tag).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
   test('a fireball razes buildings and they come down in pieces', async ({ page }) => {
     test.setTimeout(180_000);
     const errors = trackErrors(page);
