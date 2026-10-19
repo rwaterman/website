@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { trackErrors } from './helpers';
 
 const MOD_ARCHIVE = 'https://api.modarchive.org/**';
@@ -36,6 +36,15 @@ function tinyModule(speed = 3): Buffer {
   return Buffer.concat([header, pattern, sample]);
 }
 
+/** Index of the frame the reel opens on; the exhibit config marks it with `opens`. */
+async function openingIndex(museum: Locator): Promise<number> {
+  const index = await museum
+    .locator('[data-tracker-exhibit]')
+    .evaluateAll((frames) => frames.findIndex((frame) => frame.getAttribute('aria-current') === 'true'));
+  expect(index, 'one frame is current when the page loads').toBeGreaterThanOrEqual(0);
+  return index;
+}
+
 async function stubModArchive(page: Page, body: Buffer = tinyModule()): Promise<void> {
   await page.route(MOD_ARCHIVE, (route) =>
     route.fulfill({
@@ -63,8 +72,7 @@ test.describe('/fun mod music file museum', () => {
     const museum = page.locator('[data-tracker]');
     const toggle = museum.locator('[data-tracker-toggle]');
     const status = museum.locator('[data-tracker-status]');
-    const firstExhibit = museum.locator('[data-tracker-exhibit]').first();
-    await expect(firstExhibit).toHaveAttribute('aria-current', 'true');
+    await expect(museum.locator('[data-tracker-exhibit][aria-current="true"]')).toHaveCount(1);
     await expect(toggle).toHaveText('Play');
     await page.waitForLoadState('networkidle');
     expect(downloads).toEqual([]);
@@ -110,9 +118,10 @@ test.describe('/fun mod music file museum', () => {
     const title = museum.locator('[data-tracker-field="title"]');
     const exhibitButtons = museum.locator('[data-tracker-exhibit]');
     const openingTitle = (await title.textContent()) ?? '';
+    const opening = await openingIndex(museum);
 
     await museum.locator('[data-tracker-step="1"]').click();
-    await expect(exhibitButtons.nth(1)).toHaveAttribute('aria-current', 'true');
+    await expect(exhibitButtons.nth(opening + 1)).toHaveAttribute('aria-current', 'true');
     await expect(title).not.toHaveText(openingTitle);
     await exhibitButtons.nth(3).click();
     await expect(exhibitButtons.nth(3)).toHaveAttribute('aria-current', 'true');
@@ -198,13 +207,14 @@ test.describe('/fun mod music file museum', () => {
     const exhibitButtons = museum.locator('[data-tracker-exhibit]');
     test.skip((await exhibitButtons.count()) < 2, 'needs two exhibits');
     const title = museum.locator('[data-tracker-field="title"]');
-    const firstTitle = (await title.textContent()) ?? '';
+    const openingTitle = (await title.textContent()) ?? '';
+    const opening = await openingIndex(museum);
 
     await museum.locator('[data-tracker-toggle]').click();
     await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
-    await expect(exhibitButtons.nth(1)).toHaveAttribute('aria-current', 'true', { timeout: 15_000 });
-    await expect(title).not.toHaveText(firstTitle);
-    await expect(exhibitButtons.first()).not.toHaveAttribute('aria-current', 'true');
+    await expect(exhibitButtons.nth(opening + 1)).toHaveAttribute('aria-current', 'true', { timeout: 15_000 });
+    await expect(title).not.toHaveText(openingTitle);
+    await expect(exhibitButtons.nth(opening)).not.toHaveAttribute('aria-current', 'true');
     await expect(museum.locator('[data-tracker-status]')).toHaveText('Playing.', { timeout: 20_000 });
   });
 

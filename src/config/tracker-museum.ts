@@ -47,6 +47,8 @@ export interface Exhibit {
    * decades-old postal address, phone number, or e-mail address, or language not worth reprinting.
    */
   withholdSampleText?: true;
+  /** Sets the reel to this exhibit when the page loads. Exactly one exhibit carries it. */
+  opens?: true;
 }
 
 export const eras: Era[] = [
@@ -104,19 +106,6 @@ export const exhibits: Exhibit[] = [
       'Karsten Obarski wrote Ultimate Soundtracker, the first music tracker, to produce the soundtrack for this game. The file is still in the original 15-sample Soundtracker format, and the tune was reused in many intros and demos of 1987 and 1988.',
   },
   {
-    modarchiveId: 161653,
-    title: 'Driurd',
-    artist: 'Kaktus',
-    artistName: 'Anders Berkeman',
-    group: 'Mahoney & Kaktus',
-    year: 1989,
-    era: 'origins',
-    format: 'MOD',
-    origin: 'From the music disk Sounds of Gnome, released at Defiers Party 1989',
-    blurb:
-      'Kaktus and Mahoney wrote NoiseTracker in 1989, a freeware tracker built on Ultimate Soundtracker. This tune comes from the music disk they released the same year.',
-  },
-  {
     modarchiveId: 49836,
     title: 'Occ-San-Geen',
     artist: 'Uncle Tom',
@@ -128,18 +117,6 @@ export const exhibits: Exhibit[] = [
     origin: 'Soundtrack of the Scoopex demo Seven Sins (October 1989)',
     blurb:
       'Music for the Scoopex demo Seven Sins. Its instrument list still names the numbered ST-xx sample disks the sounds came from.',
-  },
-  {
-    modarchiveId: 60331,
-    title: 'Tennis',
-    artist: 'Starbuck',
-    group: 'Spreadpoint',
-    year: 1989,
-    era: 'origins',
-    format: 'MOD',
-    origin: 'Used in the Spreadpoint demo The Wooow Demo (October 1989)',
-    blurb:
-      'Used in Spreadpoint’s The Wooow Demo in October 1989 and reused within weeks in productions by Quicksilver, Centronics, and Anarchy.',
   },
   {
     modarchiveId: 211324,
@@ -204,6 +181,18 @@ export const exhibits: Exhibit[] = [
       'Composed on the Amiga in 1991, it won the music competition at Anarchy’s Easter party in Sweden. It is the second most downloaded module on The Mod Archive.',
   },
   {
+    modarchiveId: 101789,
+    title: 'Musiklinjen',
+    artist: 'Firefox & Tip',
+    group: 'Phenomena',
+    year: 1991,
+    era: 'amiga-golden',
+    format: 'MOD',
+    origin: 'Soundtrack of Phenomena’s Enigma (1st place, Amiga demo competition, Anarchy Easter Conference 1991)',
+    blurb:
+      'Also known as Hyperbased and A Final Hyperbase: the piece Demozoo credits as the soundtrack to Enigma, which won the Amiga demo competition at the Anarchy Easter Conference 1991. It is in the top twenty of all three Mod Archive charts, most downloaded, most revered, and most favourited.',
+  },
+  {
     modarchiveId: 40475,
     title: 'Elysium',
     artist: 'Jester',
@@ -216,6 +205,19 @@ export const exhibits: Exhibit[] = [
     blurb:
       'Written, in the composer’s words, as a tune “taylor-made for our new demo”, Sanity’s Elysium. It is among the most favourited modules on The Mod Archive.',
     withholdSampleText: true,
+  },
+  {
+    modarchiveId: 214414,
+    title: 'Beyond Music',
+    artist: 'Captain',
+    artistName: 'Markus Kaarlonen',
+    group: 'Image',
+    year: 1991,
+    era: 'amiga-golden',
+    format: 'MOD',
+    origin: '1st place, Amiga music competition, Byterapers–Scoopex–Bloodsuckers Gathering 1991 (Parikkala, Finland)',
+    blurb:
+      'Captain’s winning entry in the Amiga music competition at a summer 1991 gathering in Parikkala, Finland, as the file’s own text records. It came four months after Space Debris.',
   },
   {
     modarchiveId: 46900,
@@ -244,6 +246,46 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
   {
+    modarchiveId: 59344,
+    title: 'Stardust Memories',
+    artist: 'Jester',
+    artistName: 'Volker Tripp',
+    group: 'Sanity',
+    year: 1992,
+    era: 'amiga-golden',
+    format: 'MOD',
+    origin: 'Soundtrack of Sanity’s World of Commodore (2nd place, demo competition, World of Commodore 1992)',
+    blurb:
+      'Jester’s soundtrack for World of Commodore, the Sanity demo that took second place in the demo competition at the 1992 World of Commodore show, a year and a half after his Elysium. It is in the top twenty-five of all three Mod Archive charts.',
+    withholdSampleText: true,
+  },
+  {
+    modarchiveId: 52695,
+    title: 'Panic',
+    artist: 'Purple Motion',
+    artistName: 'Jonne Valtonen',
+    group: 'Future Crew',
+    year: 1992,
+    era: 'amiga-golden',
+    format: 'S3M',
+    origin: 'Soundtrack of Future Crew’s Panic (2nd place, PC demo competition, The Party 1992)',
+    blurb:
+      'Purple Motion’s soundtrack for Panic, the Future Crew demo that took second place in the PC demo competition at The Party 1992, a year before Second Reality. Its text lists the ten parts of the demo it scores: a PC piece arriving while the Amiga still ruled the room.',
+    withholdSampleText: true,
+  },
+  {
+    modarchiveId: 107562,
+    title: 'Cortouchka!',
+    artist: 'Moby',
+    group: 'Dreamdealers',
+    year: 1992,
+    era: 'amiga-golden',
+    format: 'MOD',
+    origin: '1st place, music competition, The Party 1992',
+    blurb:
+      'Winner of the music competition at The Party 1992, the same party where Spaceballs’ State of the Art, scored by Condom Corruption, won the Amiga demo competition.',
+  },
+  {
     modarchiveId: 42560,
     title: 'Guitar Slinger',
     artist: 'Jogeir Liljedahl',
@@ -264,9 +306,23 @@ export const exhibits: Exhibit[] = [
     year: 1993,
     era: 'pc-rise',
     format: 'S3M',
+    opens: true,
     origin: 'Purple Motion’s part of the Second Reality soundtrack (1st place, PC demo competition, Assembly 1993)',
     blurb:
-      'Purple Motion’s part of the soundtrack to Future Crew’s Second Reality, which won the PC demo competition at Assembly 1993. It is the most downloaded module on The Mod Archive.',
+      'Purple Motion’s part of the soundtrack to Future Crew’s Second Reality, which won the PC demo competition at Assembly 1993. It is first on all three Mod Archive charts, most downloaded, most revered, and most favourited, which is why the reel opens here.',
+  },
+  {
+    modarchiveId: 54250,
+    title: 'Satellite One',
+    artist: 'Purple Motion',
+    artistName: 'Jonne Valtonen',
+    group: 'Future Crew',
+    year: 1993,
+    era: 'pc-rise',
+    format: 'S3M',
+    origin: 'Written for the Assembly 1993 results intro',
+    blurb:
+      'By the file’s own account, Purple Motion wrote it for a small intro announcing the results of Assembly 1993, the party Second Reality won. It is in the top thirty of all three Mod Archive charts.',
   },
   {
     modarchiveId: 53148,
@@ -345,6 +401,18 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
   {
+    modarchiveId: 34596,
+    title: 'Butterfly Flew Away',
+    artist: 'Damac & Swallow',
+    year: 1995,
+    era: 'pc-rise',
+    format: 'XM',
+    origin: 'Entered in the multichannel music competition at The Party 1995',
+    blurb:
+      'Written for The Party 1995, where it finished far down the multichannel music results. Listeners overruled the jury: it is one of the ten most downloaded modules on The Mod Archive.',
+    withholdSampleText: true,
+  },
+  {
     modarchiveId: 66187,
     title: 'Funky Stars',
     artist: 'Quazar',
@@ -372,29 +440,53 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
   {
-    modarchiveId: 37029,
-    title: 'Blue Flame',
-    artist: 'Chris Jarvis',
-    group: 'Analogue',
+    modarchiveId: 46496,
+    title: 'Letting Go',
+    artist: 'WAVE',
+    artistName: 'Jeroen Tel',
+    group: 'Maniacs of Noise',
     year: 1997,
     era: 'impulse-net',
-    format: 'IT',
-    origin: 'Demo song for the Impulse Tracker 2.14 release (June 1997)',
-    blurb: 'Its header says it was “written for the IMPULSE TRACKER v2.14 release” in June 1997, as the tracker’s demo song.',
+    format: 'XM',
+    origin: '1st place, music competition, Cruelization 9 (online, 1997)',
+    blurb:
+      'Jeroen Tel of Maniacs of Noise, a name from Commodore 64 game music, writing as WAVE in FastTracker 2. Its notes say it was built from a single sine-wave sample. It won the online Cruelization 9 competition and sits in the top twenty-five of The Mod Archive’s most revered chart.',
     withholdSampleText: true,
   },
   {
-    modarchiveId: 67203,
-    title: 'Fourth Symmetriad',
-    artist: 'Skaven',
-    artistName: 'Peter Hajba',
+    modarchiveId: 41760,
+    title: 'Sick on Monday',
+    artist: 'Elwood',
+    artistName: 'Jussi Salmela',
     year: 1998,
     era: 'impulse-net',
-    format: 'IT',
-    origin: 'Standalone release; included on the Ethos9 music disk Emissions 4 (October 1998)',
+    format: 'XM',
+    origin: 'Standalone release, April 1998',
     blurb:
-      'Skaven’s notes say the song “demonstrates the use of filter envelopes (and NNAs, and other envelopes) in Impulse Tracker” and warn that it can use a large number of channels.',
-    withholdSampleText: true,
+      'Elwood two years after Dead Lock, again in FastTracker 2. It is among the forty most favourited modules on The Mod Archive and in the top twenty of its most revered chart.',
+  },
+  {
+    modarchiveId: 167157,
+    title: 'Yuki Satellites',
+    artist: 'Radix',
+    group: 'TPOLM',
+    year: 1999,
+    era: 'impulse-net',
+    format: 'XM',
+    origin: 'Released as an MP3 in August 1999; Radix gave The Mod Archive the original XM in 2009',
+    blurb:
+      'A 32-channel FastTracker 2 piece, sixth on The Mod Archive’s most revered chart. It circulated only as an MP3 for ten years before Radix shared the module itself.',
+  },
+  {
+    modarchiveId: 68847,
+    title: 'Foregone Destruction',
+    artist: 'Michiel van den Bos',
+    year: 1999,
+    era: 'impulse-net',
+    format: 'IT',
+    origin: 'Soundtrack of Unreal Tournament (1999), the Facing Worlds map',
+    blurb:
+      'The music of Facing Worlds, the Unreal Tournament map. The game played its soundtrack from tracker modules, and this is that file: its sample text reads “Composed by Michiel van den Bos For Unreal Tournament.”',
   },
   {
     modarchiveId: 66334,
@@ -434,29 +526,17 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
   {
-    modarchiveId: 189484,
-    title: 'Victory (the race part 2)',
-    artist: 'wayfinder',
-    group: 'Farbrausch / Azure / Vacuum',
-    year: 2001,
-    era: 'impulse-net',
-    format: 'IT',
-    origin: '4th place, tracked music competition, The Party 2001 (December 2001)',
-    blurb:
-      'Farbrausch is known for 64k intros whose music is synthesized in code; this is one of its musicians at the tracker instead, sixty-four Impulse Tracker channels wide, signed in the instrument names “of azure, vacuum, farbrausch”.',
-  },
-  {
-    modarchiveId: 181523,
-    title: 'Nightfall Over the City',
-    artist: 'Virt',
-    artistName: 'Jake Kaufman',
-    group: 'Brainstorm',
-    year: 2009,
+    modarchiveId: 156184,
+    title: 'Beyond the Network',
+    artist: 'Skaven',
+    artistName: 'Peter Hajba',
+    year: 2004,
     era: 'modern',
     format: 'IT',
-    origin: 'From the Brainstorm music disk Tracked In Time (January 2009)',
+    origin: 'Bejeweled 2 soundtrack (PopCap Games, 2004), as one suite',
     blurb:
-      'Jake Kaufman’s contribution to Tracked In Time, a music disk built on ST-01, the sample disk that was distributed with the original Soundtracker.',
+      'The whole Bejeweled 2 soundtrack in a single half-hour module: Skaven’s notes list twenty sections, from the title track through “Bejeweled Theme” to “Final Destination”. A Future Crew composer scoring a casual-game hit a decade on, fifteenth on The Mod Archive’s most revered chart.',
+    withholdSampleText: true,
   },
   {
     modarchiveId: 172032,
@@ -478,17 +558,6 @@ export const exhibits: Exhibit[] = [
     format: 'MOD',
     origin: 'Winner of the tracked music competition at Revision 2014',
     blurb: 'A four-channel ProTracker MOD with rapped vocals that won the tracked music competition at Revision 2014.',
-  },
-  {
-    modarchiveId: 178802,
-    title: 'Rollerdisco Rumble',
-    artist: 'Vince Kaichan',
-    year: 2015,
-    era: 'modern',
-    format: 'MPTM',
-    origin: 'Written for the Chiptunes = WIN 2015 holiday bundle',
-    blurb:
-      'A 28-channel module in MPTM, OpenMPT’s own format. The composer’s notes say it was started in December 2014 and finished in October 2015.',
   },
   {
     modarchiveId: 178969,
@@ -528,6 +597,14 @@ export const exhibits: Exhibit[] = [
     withholdSampleText: true,
   },
 ];
+
+/** The exhibit the reel is set to when the page loads: the one marked `opens`. */
+export function openingExhibit(): Exhibit {
+  const marked = exhibits.filter((exhibit) => exhibit.opens);
+  const [opening] = marked;
+  if (marked.length !== 1 || !opening) throw new Error(`Exactly one exhibit should set opens; ${marked.length} do`);
+  return opening;
+}
 
 export function downloadUrl(exhibit: Exhibit): string {
   return `https://api.modarchive.org/downloads.php?moduleid=${exhibit.modarchiveId}`;

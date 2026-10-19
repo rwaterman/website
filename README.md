@@ -57,7 +57,10 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   middle names the year and era of the frame under it; the chosen frame is centred in the gate
   and carries a progress bar while it plays. The volume setting is kept in `localStorage`. The
   page uses the Layout's `wide` option (`--container-wide`, 90rem). Exhibits live in
-  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
+  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id);
+  the one exhibit marked `opens` is where the reel is set when the page loads. Each exhibit
+  needs evidence of stature: a top-three party placing, a place on The Mod Archive's charts,
+  a landmark demo or game soundtrack, or a landmark in the format's history.
   No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
   and nothing is requested before that. Until Play is pressed, choosing an exhibit or using
   Prev / Next only changes the placard. Playback is libopenmpt compiled to WebAssembly (from

@@ -18,7 +18,7 @@
  * way a download starts is a `tracker:random` event on document, which the fullscreen shader
  * stage dispatches from its Mod (M) control, inside that click or key press.
  */
-import { credit, downloadUrl, eras, exhibits, pageUrl, yearLabel, type Exhibit } from '../config/tracker-museum';
+import { credit, downloadUrl, eras, exhibits, openingExhibit, pageUrl, yearLabel, type Exhibit } from '../config/tracker-museum';
 import { TrackerPlayer } from './tracker-player';
 import type { ModuleInfo, Position } from './tracker.worklet';
 
@@ -184,8 +184,7 @@ function linerNotes(info: ModuleInfo): string {
 }
 
 function mount(root: HTMLElement): void {
-  const opening = exhibits[0];
-  if (!opening) return;
+  const opening = openingExhibit();
 
   const field = (name: string): HTMLElement => need(root, `[data-tracker-field="${name}"]`);
   const live = (name: string): HTMLElement => need(root, `[data-tracker-live="${name}"]`);

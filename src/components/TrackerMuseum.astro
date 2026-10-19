@@ -2,19 +2,21 @@
 /**
  * The Mod Music File Museum tab of /fun: a film-strip timeline of the exhibits, oldest on the
  * left, above a module player with a live pattern display. Exhibits come from
- * src/config/tracker-museum.ts; the placard is rendered here for the first one and
+ * src/config/tracker-museum.ts; the placard is rendered here for the one marked `opens` and
  * src/lib/tracker-museum.ts rewrites it as pieces change. The Random shader button is handled
  * by src/lib/shader-runtime.ts like any [data-random-shader].
  */
 import Section from './Section.astro';
-import { credit, eras, exhibits, pageUrl, yearLabel } from '../config/tracker-museum';
+import { credit, eras, exhibits, openingExhibit, pageUrl, yearLabel } from '../config/tracker-museum';
 
-const first = exhibits[0];
-const last = exhibits.at(-1);
-if (!first || !last) throw new Error('The Mod Music File Museum needs at least one exhibit');
+const oldest = exhibits[0];
+const newest = exhibits.at(-1);
+if (!oldest || !newest) throw new Error('The Mod Music File Museum needs at least one exhibit');
 
-const firstEra = eras.find((era) => era.id === first.era);
-if (!firstEra) throw new Error(`Exhibit "${first.title}" names an era that is not in eras`);
+const opening = openingExhibit();
+const openingEra = eras.find((era) => era.id === opening.era);
+if (!openingEra) throw new Error(`Exhibit "${opening.title}" names an era that is not in eras`);
+const openingNumber = String(exhibits.indexOf(opening) + 1).padStart(2, '0');
 
 /** Each frame of the film strip, with the edge print it carries: an era title where a new era starts, a year where the year changes. */
 const frames = exhibits.map((exhibit, index) => {
@@ -41,7 +43,7 @@ const IDLE_ORDERS = 24;
     <p class="text-muted">
       A tracker module is the score, not the recording: a handful of short samples and a grid of notes, small enough
       for a floppy disk, performed live by the machine. The Amiga and PC demoscenes shipped music this way for a
-      decade before MP3. These {exhibits.length} pieces run from {first.year} to {last.year} and play here the same
+      decade before MP3. These {exhibits.length} pieces run from {oldest.year} to {newest.year} and play here the same
       way: libopenmpt, compiled to WebAssembly, performs every row in your browser while the pattern scrolls past.
     </p>
     <p class="max-w-[34rem] self-end text-small text-muted">
@@ -68,8 +70,8 @@ const IDLE_ORDERS = 24;
                 data-tracker-exhibit={exhibit.modarchiveId}
                 data-frame-year={yearLabel(exhibit)}
                 data-era-title={era.title}
-                aria-current={exhibit === first ? 'true' : undefined}
-                tabindex={exhibit === first ? 0 : -1}
+                aria-current={exhibit === opening ? 'true' : undefined}
+                tabindex={exhibit === opening ? 0 : -1}
               >
                 <span class="reel-frame__year">{yearLabel(exhibit)}</span>
                 <span class="reel-frame__title">{exhibit.title}</span>
@@ -88,24 +90,24 @@ const IDLE_ORDERS = 24;
       </ol>
       <div class="reel__gate" aria-hidden="true">
         <span class="reel__readout">
-          <span class="reel__readout-year" data-tracker-dial-year>{yearLabel(first)}</span>
-          <span class="reel__readout-era" data-tracker-dial-era>{firstEra.title}</span>
+          <span class="reel__readout-year" data-tracker-dial-year>{yearLabel(opening)}</span>
+          <span class="reel__readout-era" data-tracker-dial-era>{openingEra.title}</span>
         </span>
       </div>
     </div>
 
     <div class="deck">
       <article class="deck__placard">
-        <p class="label" data-tracker-field="era">{yearLabel(first)} · {firstEra.title}</p>
+        <p class="label" data-tracker-field="era">{yearLabel(opening)} · {openingEra.title}</p>
         <h3 class="mt-3 font-display text-h2 font-bold uppercase tracking-[0.01em]" data-tracker-field="title">
-          {first.title}
+          {opening.title}
         </h3>
-        <p class="mt-2 font-semibold" data-tracker-field="credit">{credit(first)}</p>
-        <p class="label mt-2" data-tracker-field="origin">{first.origin}</p>
-        <p class="mt-4 text-small text-muted" data-tracker-field="blurb">{first.blurb}</p>
-        <p class="mt-4 flex flex-wrap gap-2" data-tracker-field="file"><span class="chip">{first.format}</span></p>
+        <p class="mt-2 font-semibold" data-tracker-field="credit">{credit(opening)}</p>
+        <p class="label mt-2" data-tracker-field="origin">{opening.origin}</p>
+        <p class="mt-4 text-small text-muted" data-tracker-field="blurb">{opening.blurb}</p>
+        <p class="mt-4 flex flex-wrap gap-2" data-tracker-field="file"><span class="chip">{opening.format}</span></p>
         <p class="label mt-4">
-          <a class="hover:text-text" href={pageUrl(first)} target="_blank" rel="noopener noreferrer" data-tracker-source>
+          <a class="hover:text-text" href={pageUrl(opening)} target="_blank" rel="noopener noreferrer" data-tracker-source>
             This module on The Mod Archive <span aria-hidden="true">↗</span>
           </a>
         </p>
@@ -120,7 +122,7 @@ const IDLE_ORDERS = 24;
       <div class="deck__console">
         <div class="console-transport">
           <div class="console-lcd">
-            <p class="console-lcd__index" data-tracker-index>Exhibit 01 of {exhibits.length}</p>
+            <p class="console-lcd__index" data-tracker-index>Exhibit {openingNumber} of {exhibits.length}</p>
             <p class="console-lcd__time" data-tracker-time>0:00 / 0:00</p>
             <p class="console-lcd__remaining" data-tracker-remaining>&nbsp;</p>
           </div>
