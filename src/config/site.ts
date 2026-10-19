@@ -77,7 +77,6 @@ export const nav: NavLink[] = [
     blurb: 'Writing on cloud architecture and engineering, drafted with generative AI assistance.',
   },
   { label: 'Fun', href: '/fun' },
-  { label: 'Feed', href: '/feed' },
   { label: 'Links', href: '/links' },
   { label: 'Contact', href: '/contact' },
 ];

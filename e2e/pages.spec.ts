@@ -23,7 +23,7 @@ const pages: PageCase[] = [
 ];
 const notFound: PageCase = { path: '/no-such-page', title: '404 · Rick Waterman', heading: 'Not found', background: 'blackhole' };
 
-const navLabels = ['Bio', 'Resume', 'Notes', 'AI Blog', 'Fun', 'Feed', 'Links', 'Contact'];
+const navLabels = ['Bio', 'Resume', 'Notes', 'AI Blog', 'Fun', 'Links', 'Contact'];
 const subdomainSuffix = process.env.SITE === 'https://rickwaterman.com' ? '' : '-dev';
 
 test('webgl2 is available to the test browser', async ({ page }) => {
