@@ -14,6 +14,7 @@ import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { HOSTED_ZONE_ID, ZONE_NAME, GITHUB_REPO, SiteEnv } from './site-config';
+import { Feed } from './feed';
 
 export interface SiteStackProps extends cdk.StackProps {
   site: SiteEnv;
@@ -145,6 +146,27 @@ export class SiteStack extends cdk.Stack {
       };
     }
 
+    const feed = site.enableFeed ? new Feed(this, 'Feed', { site }) : undefined;
+    if (feed) {
+      additionalBehaviors['api/feed*'] = {
+        origin: new origins.HttpOrigin(`${feed.api.apiId}.execute-api.${this.region}.amazonaws.com`, {
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+          customHeaders: { 'x-origin-verify': feed.originVerifyValue },
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      };
+      additionalBehaviors['feed-media/*'] = {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(feed.mediaBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        compress: true,
+      };
+    }
+
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       domainNames,
       certificate,
@@ -217,6 +239,9 @@ export class SiteStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'DistributionDomain', { value: distribution.distributionDomainName });
     if (contactRecipientParameterName) {
       new cdk.CfnOutput(this, 'ContactRecipientParameterName', { value: contactRecipientParameterName });
+    }
+    if (feed) {
+      new cdk.CfnOutput(this, 'FeedTokenParameterName', { value: feed.tokenParameterName });
     }
     new cdk.CfnOutput(this, 'ContentRoleArn', { value: contentRole.roleArn });
   }

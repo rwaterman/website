@@ -1,7 +1,7 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, resume, links + feeds, 404, plus an unlisted fun page) built with
+A static site (bio, resume, links + feeds, share feed, 404, plus an unlisted fun page) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
@@ -18,7 +18,7 @@ share infrastructure owned by this repo.
 npm ci
 npm run dev        # http://localhost:4321
 npm run check      # astro check (types in .astro and .ts)
-npm test           # node:test for src/lib
+npm test           # node:test for src/lib and src/config
 npm run build      # static output in ./dist
 npm run preview    # serve ./dist locally
 npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless Chromium
@@ -27,8 +27,12 @@ npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless 
 End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
 (`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
-CloudFront), and `/fun`, where every shader in `src/shaders/` must compile and paint.
-Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
+CloudFront), and `/fun`, where the tabs must switch and deep-link, every shader in `src/shaders/`
+must compile and paint, the Mod Music File Museum must load, play, pause, seek, advance, and report a
+failed download, and each room must reach the other (a random module from the stage, a random shader
+over the music). The tracker spec
+answers The Mod Archive's download URL with a module it builds in memory, so it never touches
+the network. Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
 Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
 
 `SITE` (e.g. `https://dev.rickwaterman.com`) is read at build time for canonical URLs and
@@ -41,15 +45,38 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`) — the non-work page, linked from the nav.
-- **Fun → GenAI Shaders** — GLSL fragment shaders in `src/shaders/*.frag`, run by
+- **Fun** (`/fun`) — the non-work page, linked from the nav. Two tabs, Mod Music File Museum
+  (default) and Shader Collection; the hash names the open tab (`/fun#shaders`) and a shader's
+  own link (`/fun#tunnel`) opens the collection. A third tab, Games, is built but empty and
+  only rendered when `FUN_GAMES=on` is set at build time.
+- **Fun → Mod Music File Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
+  other formats libopenmpt reads) with a live display: order / pattern / row, speed and tempo,
+  a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
+  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
+  No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
+  and nothing is requested before that. Until Play is pressed, choosing an exhibit or using
+  Prev / Next only changes the placard. Playback is libopenmpt compiled to WebAssembly (from
+  the `chiptune3` package) running in an AudioWorklet, `src/lib/tracker.worklet.ts`, which
+  Vite bundles on its own (`worker.format: 'es'` in `astro.config.mjs` is there for it).
+  `src/lib/tracker-player.ts` is the page-side handle and `src/lib/tracker-museum.ts` paints
+  the display. When a piece ends the next exhibit starts. Under `prefers-reduced-motion` the
+  meters and the scrolling pattern stay off and the numeric readout still runs. A panel under
+  the pattern lists the file's sample names, where composers left signatures and greetings;
+  `withholdSampleText` on an exhibit keeps it off the page for files whose text carries an
+  old postal address, phone number, e-mail address, or strong language. To add an exhibit,
+  confirm composer and year against a second source, read its sample text, and insert it by
+  era, then year; `npm test` checks the ordering and the era ranges. The transport's Random
+  shader button opens the shader stage over the music, and the stage's `M` key asks the museum
+  for a random module (a `tracker:random` event on `document`), so either room can start the other.
+- **Fun → Shader Collection** — GLSL fragment shaders in `src/shaders/*.frag`, run by
   `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
   its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
   context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
   Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
-  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `T` tour (a new
-  shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause, `Esc` close.
+  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `M` random mod,
+  `T` tour (a new shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause,
+  `Esc` close.
   The editor recompiles the open shader as its GLSL changes and keeps the last good program
   running when a compile fails; edits last until the page reloads. Every shader has a link,
   `/fun#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
@@ -66,19 +93,24 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   the Feeds section of `/links` and served as-is (linked inline as "OPML"). Replace the file to update
   the list.
 
+- **Feed** (`/feed`) — videos, links, and images shared from the phone's share sheet. Posts
+  are not in the repo: they live in DynamoDB and the page loads them from `/api/feed` in the
+  browser, so a share appears without a deploy. See [Share feed](#share-feed).
+
 ## Layout
 
 ```
 src/
-  pages/        index, resume, fun, links (+ feeds), legal, 404
-  components/   Header, Footer, Section
+  pages/        index, resume, fun, links (+ feeds), feed, legal, 404
+  components/   Header, Footer, Section, TrackerMuseum
   layouts/      Layout.astro
-  config/       site.ts — name, nav, external links, playlists; shaders.ts
-  lib/          opml.ts, fun.ts, slug.ts, shader-runtime.ts (+ node:test files)
+  config/       site.ts — name, nav, external links, playlists; shaders.ts; tracker-museum.ts
+  lib/          opml.ts, feed.ts, fun.ts, slug.ts, shader-runtime.ts, tracker-museum.ts,
+                tracker-player.ts, tracker.worklet.ts (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-e2e/            Playwright specs (pages, contact form, shader gallery)
+e2e/            Playwright specs (pages, contact form, shader gallery, mod music file museum + tabs)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
@@ -86,6 +118,8 @@ infra/          AWS CDK app (TypeScript)
   lib/edge-stack.ts     shared WAF (us-east-1)
   lib/cert-stack.ts     per-env ACM certificate (us-east-1)
   lib/site-stack.ts     one environment (us-west-2)
+  lib/feed.ts           share feed construct, used by site-stack.ts
+  lambda/feed/          share feed Lambda (index.mjs handler, post.mjs validation)
   lib/redirect-stack.ts rickgwaterman.com → rickwaterman.com 301 (us-east-1)
   lib/site-config.ts    SITE_ENVS, account/region/zone
 .github/workflows/
@@ -103,6 +137,10 @@ flowchart LR
   CF --> S3
   WAF[Shared WAF WebACL] -.associated.- CF
   CF -->|/api/contact| API[HTTP API + Lambda + DynamoDB] --> SES[SES email]
+  Phone[iOS Shortcut<br/>share sheet] -->|POST /api/feed + token| CF
+  CF -->|/api/feed| FEED[HTTP API + Lambda] --> DDB[(DynamoDB)]
+  FEED --> MEDIA[(S3 media bucket)]
+  CF -->|/feed-media/*| MEDIA
 ```
 
 The home region is `us-west-2`; everything that can live there does (buckets,
@@ -165,6 +203,76 @@ build output. SES identities are regional: the Lambda sends from **us-west-2**, 
 identity verified only in us-east-1 fails with `MessageRejected`. While the account is in
 the SES sandbox the recipient must be a verified identity too — swap recipients by
 verifying the new address in SES (us-west-2) and updating the parameter; no deploy needed.
+
+### Share feed
+
+`/feed` shows what was shared from the phone. An iOS Shortcut in the share sheet posts the
+URL or image to `/api/feed`; one Lambda stores it in a DynamoDB table (images go to a
+private media bucket served at `/feed-media/*`), and the page reads the newest 100 posts
+back from the same endpoint. It is enabled per environment via `enableFeed` in
+`site-config.ts`.
+
+| Request | Auth | Body | Result |
+| --- | --- | --- | --- |
+| `GET /api/feed` | none | — | `{ "items": [{ id, createdAt, url?, title?, note?, image? }] }`, newest first |
+| `POST /api/feed` | `x-feed-token` | `{ "url"?, "title"?, "note"?, "image"? }` | `201 { "id" }` |
+| `DELETE /api/feed/{id}` | `x-feed-token` | — | `200 { "ok": true }`, image removed too |
+
+The API answers only through CloudFront: the distribution adds an `x-origin-verify` header
+that the Lambda checks, so a request sent straight to the API Gateway hostname gets `403`
+and cannot bypass the web application firewall (WAF) rate limit. The firewall also masks
+`x-feed-token` in its sampled requests.
+
+A post needs a `url` (http or https) or an `image` (base64 JPEG, PNG, GIF, or WebP, up to
+4 MB decoded). YouTube links render as an embedded player, images inline, and every other
+link as a titled link with its host.
+
+The token is the only write guard. It lives in the SecureString parameter
+`/website/<env>/feed-token`, which is created by hand and never appears in the repo:
+
+```sh
+aws ssm put-parameter --region us-west-2 --type SecureString \
+  --name /website/prod/feed-token --value "$(openssl rand -hex 32)"
+aws ssm get-parameter --region us-west-2 --with-decryption \
+  --name /website/prod/feed-token --query Parameter.Value --output text
+```
+
+To rotate it, overwrite the parameter (`--overwrite`) and update the Shortcut. A running
+Lambda caches the old token until its execution environment is recycled; to force that,
+change any environment variable on the function or redeploy.
+
+Remove a mis-share with its `id` from `GET /api/feed`:
+
+```sh
+curl -X DELETE -H "x-feed-token: $TOKEN" https://rickwaterman.com/api/feed/<id>
+```
+
+The post leaves `/feed` at once. A deleted image can stay in CloudFront and browser caches
+for up to five minutes, the cache lifetime set on every upload. If the request fails, send
+it again: the post stays listed until its image is gone, so a retry always finishes the job.
+
+#### iOS Shortcut
+
+Build it once in the Shortcuts app; it then appears in every app's share sheet.
+
+1. New Shortcut named "Post to feed". In its details, turn on **Show in Share Sheet** and
+   accept **Images** and **URLs** (Safari web pages and text can stay on as well).
+2. **Ask for Input** (Text, prompt "Note", allow an empty answer).
+3. **Get URLs from Input**, then **If** *URLs* **has any value**: **Get Contents of URL**
+   `https://rickwaterman.com/api/feed` with method POST, header `x-feed-token` set to the
+   token, and a JSON body of `url` (URLs), `title` (Shortcut Input → Name), and `note`
+   (Provided Input). Checking for a URL first matters: a Safari page also contains images,
+   and would otherwise be posted as one of them.
+4. **Otherwise**, **Get Images from Input**, then:
+   1. **Resize Image** to 1600 wide, **Convert Image** to JPEG (quality about 0.8). This
+      turns HEIC photos into a format the endpoint accepts and keeps them under 4 MB.
+   2. **Base64 Encode** the converted image, line breaks **None**.
+   3. **Get Contents of URL** with the same address, method, and header, and a JSON body
+      of `image` (Base64 Encoded) and `note` (Provided Input).
+5. **End If**, then **Show Notification** with the response so a rejected post is visible.
+
+Share from YouTube, Reddit, Safari, or Photos → **Post to feed** → type a note or leave it
+blank. The post is on `/feed` on the next page load.
 
 ## CI/CD
 
