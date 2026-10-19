@@ -1,10 +1,10 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, resume, links + feeds, share feed, 404, plus the fun pages) built with
+A static site (bio, resume, links + feeds, 404, plus the fun pages) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
-Pages are Astro; the few pieces that hold interactive state (the share feed, the fullscreen
-shader stage) are React components hydrated as Astro islands.
+Pages are Astro; the one piece that holds interactive state (the fullscreen shader stage)
+is a React component hydrated as an Astro island.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
 share infrastructure owned by this repo.
@@ -109,26 +109,22 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   the Feeds section of `/links` and served as-is (linked inline as "OPML"). Replace the file to update
   the list.
 
-- **Feed** (`/feed`) — videos, links, and images shared from the phone's share sheet. Posts
-  are not in the repo: they live in DynamoDB and `src/components/Feed.tsx` loads them from
-  `/api/feed` in the browser, so a share appears without a deploy. See [Share feed](#share-feed).
-
 ## Layout
 
 ```
 src/
-  pages/        index, resume, fun/ (index, music, shaders), links (+ feeds), feed, legal, 404
+  pages/        index, resume, fun/ (index, music, shaders), links (+ feeds), legal, 404
   components/   Header, Footer, Section, FunNav, TrackerMuseum (.astro);
-                Feed, ShaderStage (.tsx, React islands)
+                ShaderStage (.tsx, React island)
   layouts/      Layout.astro
   config/       site.ts — name, nav, external links, playlists; shaders.ts; tracker-museum.ts
-  lib/          opml.ts, feed.ts, fun.ts, slug.ts, shader-engine.ts, shader-runtime.ts,
+  lib/          opml.ts, fun.ts, slug.ts, shader-engine.ts, shader-runtime.ts,
                 shader-filter.ts, tracker-museum.ts, tracker-player.ts, tracker.worklet.ts
                 (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-e2e/            Playwright specs (pages, contact form, feed, shader gallery + stage, mod music file museum + rooms)
+e2e/            Playwright specs (pages, contact form, shader gallery + stage, mod music file museum + rooms)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
@@ -224,11 +220,11 @@ verifying the new address in SES (us-west-2) and updating the parameter; no depl
 
 ### Share feed
 
-`/feed` shows what was shared from the phone. An iOS Shortcut in the share sheet posts the
-URL or image to `/api/feed`; one Lambda stores it in a DynamoDB table (images go to a
-private media bucket served at `/feed-media/*`), and the page reads the newest 100 posts
-back from the same endpoint. It is enabled per environment via `enableFeed` in
-`site-config.ts`.
+The site has no feed page any more; the API behind it is still deployed. An iOS Shortcut
+in the share sheet posts a URL or image to `/api/feed`; one Lambda stores it in a DynamoDB
+table (images go to a private media bucket served at `/feed-media/*`) and serves the newest
+100 posts back from the same endpoint. It is enabled per environment via `enableFeed` in
+`site-config.ts`; turning that off removes the API, table, and bucket on the next infra deploy.
 
 | Request | Auth | Body | Result |
 | --- | --- | --- | --- |
@@ -265,7 +261,7 @@ Remove a mis-share with its `id` from `GET /api/feed`:
 curl -X DELETE -H "x-feed-token: $TOKEN" https://rickwaterman.com/api/feed/<id>
 ```
 
-The post leaves `/feed` at once. A deleted image can stay in CloudFront and browser caches
+The post leaves `GET /api/feed` at once. A deleted image can stay in CloudFront and browser caches
 for up to five minutes, the cache lifetime set on every upload. If the request fails, send
 it again: the post stays listed until its image is gone, so a retry always finishes the job.
 
@@ -290,7 +286,7 @@ Build it once in the Shortcuts app; it then appears in every app's share sheet.
 5. **End If**, then **Show Notification** with the response so a rejected post is visible.
 
 Share from YouTube, Reddit, Safari, or Photos → **Post to feed** → type a note or leave it
-blank. The post is on `/feed` on the next page load.
+blank. The post is in `GET /api/feed` at once.
 
 ## CI/CD
 
