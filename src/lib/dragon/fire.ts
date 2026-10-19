@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import type { City, Structure } from './city';
+import type { City, Part, Structure } from './city';
 import { createDebrisPool, spawnDebris, stepDebris, type DebrisPool } from './debris';
+import { addBody, BODY_ASLEEP, createRigidPool, impulseFrom, releaseBody, stepRigid, type RigidPool } from './rigid';
 import { DUST, EMBER, FIRE, FLASH, ParticleField, SMOKE } from './particles';
 import { terrainHeight, WATER_LEVEL } from './terrain';
 
@@ -14,6 +15,8 @@ export interface FireQuality {
   breathRate: number;
   /** Multiplier on rubble chunks per collapse. */
   chunkScale: number;
+  /** Building parts that can be falling at once; more come down as the first ones settle. */
+  bodies: number;
 }
 
 /** What the fire system tells the rest of the game, mainly so the audio can follow it. */
@@ -50,6 +53,14 @@ interface Flash {
   power: number;
 }
 
+/** A structure coming down a stage at a time. `origin` is the blast that did it, if any. */
+interface Collapse {
+  structure: Structure;
+  origin: THREE.Vector3 | null;
+  force: number;
+  clock: number;
+}
+
 const BREATH_PROBES = [10, 24, 40, 58, 76];
 const WIND = new THREE.Vector2(4.5, 2.2);
 const FIREBALL_SPEED = 150;
@@ -57,6 +68,10 @@ const FIREBALL_GRAVITY = 20;
 const BLAST_RADIUS = 24;
 const FIRE_LIGHTS = 4;
 const MAX_GROUND_FIRES = 48;
+/** Seconds between collapse stages when fire, not a blast, brings a building down. */
+const STAGE_DELAY = 0.3;
+/** Parts a single blast may pick back up off the ground and throw again. */
+const MAX_RETHROWN = 140;
 
 const random = Math.random;
 const spread = (amount: number): number => (random() - 0.5) * 2 * amount;
@@ -71,6 +86,10 @@ export class Inferno {
   private readonly quality: FireQuality;
   private readonly events: FireEvents;
   private readonly debris: DebrisPool;
+  private readonly rigid: RigidPool;
+  /** The building part each rigid-body slot is carrying, or null for a free slot. */
+  private readonly bodyParts: (Part | null)[];
+  private readonly collapses: Collapse[] = [];
   private readonly debrisMesh: THREE.InstancedMesh;
   private readonly drawn: Uint8Array;
   private readonly fireballs: Fireball[] = [];
@@ -88,6 +107,7 @@ export class Inferno {
   private lightTimer = 0;
   private time = 0;
   private impactsThisFrame = 0;
+  private partImpactsThisFrame = 0;
 
   constructor(city: City, quality: FireQuality, events: FireEvents) {
     this.city = city;
@@ -101,6 +121,8 @@ export class Inferno {
     }
 
     this.debris = createDebrisPool(quality.debris);
+    this.rigid = createRigidPool(quality.bodies);
+    this.bodyParts = new Array<Part | null>(quality.bodies).fill(null);
     this.drawn = new Uint8Array(quality.debris).fill(2);
     this.debrisMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial(), quality.debris);
     this.debrisMesh.frustumCulled = false;
@@ -230,7 +252,8 @@ export class Inferno {
 
     const stone = !structure.flammable;
     const volume = building.width * building.depth * (building.height + building.roof * 0.5);
-    const chunks = Math.round(Math.min(64, Math.max(7, volume / 60)) * this.quality.chunkScale);
+    // The building's own parts do the heavy falling; these are the splinters and chips around them.
+    const chunks = Math.round(Math.min(24, Math.max(4, volume / 160)) * this.quality.chunkScale);
     const cos = Math.cos(building.rotation);
     const sin = Math.sin(building.rotation);
     const charred = wasBurning && structure.burnTime > 2.5;
@@ -256,7 +279,7 @@ export class Inferno {
       }
 
       const plank = !stone && random() < 0.45;
-      const block = stone ? 1.1 + random() * 1.9 : 0.9 + random() * 1.5;
+      const block = stone ? 0.5 + random() * 0.9 : 0.4 + random() * 0.7;
       const shade = stone ? 0.3 + random() * 0.22 : charred ? 0.03 + random() * 0.05 : random() < 0.5 ? 0.16 + random() * 0.08 : 0.55 + random() * 0.25;
       spawnDebris(
         this.debris,
@@ -267,9 +290,9 @@ export class Inferno {
           vx,
           vy,
           vz,
-          sx: plank ? 0.35 : block,
-          sy: plank ? 0.35 : block * (0.5 + random() * 0.6),
-          sz: plank ? 2.2 + random() * 2.4 : block * (0.6 + random() * 0.7),
+          sx: plank ? 0.22 : block,
+          sy: plank ? 0.22 : block * (0.5 + random() * 0.6),
+          sz: plank ? 1.4 + random() * 1.6 : block * (0.6 + random() * 0.7),
           r: shade * (stone ? 1 : 1.12),
           g: shade,
           b: shade * (stone ? 0.96 : 0.82),
@@ -290,7 +313,155 @@ export class Inferno {
         this.fire.emit(building.x + spread(building.width / 2), building.y + random() * building.height, building.z + spread(building.depth / 2), spread(14), 6 + random() * 22, spread(14), 1.2 + random() * 2, 0.6 + random() * 0.5, EMBER, this.time);
       }
     }
+    this.collapses.push({ structure, origin: origin?.clone() ?? null, force, clock: 0 });
     this.events.collapse(new THREE.Vector3(building.x, building.y + building.height / 2, building.z), stone, size);
+  }
+
+  /** Lets go of every part in `stage`; later stages wait their turn in `updateCollapses`. */
+  private releaseStage(structure: Structure, stage: number, origin: THREE.Vector3 | null, force: number): void {
+    for (const part of structure.parts) {
+      if (part.stage === stage) this.releasePart(structure, part, origin, force);
+    }
+    structure.released = Math.max(structure.released, stage + 1);
+  }
+
+  /** Hands a standing (or settled) part to the rigid-body pool, thrown by a blast or toppling on its own. */
+  private releasePart(structure: Structure, part: Part, origin: THREE.Vector3 | null, force: number): void {
+    if (part.hidden || part.body >= 0) return;
+    if (part.material === 'glow') {
+      this.city.hidePart(part);
+      return;
+    }
+    const { position, quaternion, size } = part;
+    let vx = spread(1.5);
+    let vy = random() * 1.5;
+    let vz = spread(1.5);
+    let wx = spread(0.8);
+    let wy = spread(0.8);
+    let wz = spread(0.8);
+    if (origin) {
+      const dx = position.x - origin.x;
+      const dy = position.y - origin.y + 4;
+      const dz = position.z - origin.z;
+      const distance = Math.max(3, Math.hypot(dx, dy, dz));
+      const push = (force * (0.6 + random() * 0.8)) / (1 + distance * 0.05);
+      vx += (dx / distance) * push;
+      vy += (dy / distance) * push + force * 0.3 * random();
+      vz += (dz / distance) * push;
+      wx = spread(5);
+      wy = spread(5);
+      wz = spread(5);
+    } else if (size.y > Math.max(size.x, size.z) * 0.7) {
+      // Upright pieces topple over their base, mostly away from the middle of the building.
+      const outX = position.x - structure.building.x;
+      const outZ = position.z - structure.building.z;
+      const length = Math.hypot(outX, outZ) || 1;
+      const sign = random() < 0.7 ? 1 : -1;
+      const rate = 0.9 + random() * 0.9;
+      // Spinning about (up x outward) tips the top outward.
+      wx = (outZ / length) * rate * sign;
+      wy = spread(0.2);
+      wz = (-outX / length) * rate * sign;
+      vx = (outX / length) * sign * 1.5;
+      vy = 0;
+      vz = (outZ / length) * sign * 1.5;
+    }
+    const slot = addBody(this.rigid, {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      qx: quaternion.x,
+      qy: quaternion.y,
+      qz: quaternion.z,
+      qw: quaternion.w,
+      hx: size.x / 2,
+      hy: size.y / 2,
+      hz: size.z / 2,
+      vx,
+      vy,
+      vz,
+      wx,
+      wy,
+      wz,
+    });
+    if (slot < 0) {
+      // Every body is busy: the part crumbles where it stands instead.
+      this.city.hidePart(part);
+      const block = Math.min(2.5, Math.max(size.x, size.y, size.z) * 0.4);
+      spawnDebris(this.debris, { x: position.x, y: position.y, z: position.z, vx, vy: vy + 4, vz, sx: block, sy: block * 0.6, sz: block, r: 0.2, g: 0.18, b: 0.16, life: 10 }, random);
+      return;
+    }
+    part.body = slot;
+    part.down = false;
+    this.bodyParts[slot] = part;
+  }
+
+  private updateCollapses(dt: number): void {
+    for (let index = this.collapses.length - 1; index >= 0; index -= 1) {
+      const collapse = this.collapses[index];
+      collapse.clock -= dt;
+      if (collapse.clock > 0) continue;
+      const { structure } = collapse;
+      this.releaseStage(structure, structure.released, collapse.origin, collapse.force);
+      if (structure.released > structure.stages) {
+        this.collapses.splice(index, 1);
+        continue;
+      }
+      collapse.clock = collapse.origin ? 0.06 : STAGE_DELAY + random() * 0.2;
+    }
+  }
+
+  /** Steps the falling parts and writes them back into their instances; settled parts give up their slot. */
+  private updateBodies(dt: number): void {
+    const pool = this.rigid;
+    this.partImpactsThisFrame = 0;
+    stepRigid(pool, dt, terrainHeight, (index, speed) => {
+      if (speed < 7 || this.partImpactsThisFrame >= 2) return;
+      this.partImpactsThisFrame += 1;
+      const at = new THREE.Vector3(pool.position[index * 3], pool.position[index * 3 + 1], pool.position[index * 3 + 2]);
+      this.events.debrisImpact(at, speed);
+      for (let puff = 0; puff < 4; puff += 1) {
+        this.smoke.emit(at.x + spread(1.5), at.y, at.z + spread(1.5), spread(4), 1 + random() * 3, spread(4), 1.6 + random() * 1.4, 5 + random() * 5, DUST, this.time);
+      }
+    });
+    for (let slot = 0; slot < this.bodyParts.length; slot += 1) {
+      const part = this.bodyParts[slot];
+      if (!part) continue;
+      const offset = slot * 3;
+      this.point.set(pool.position[offset], pool.position[offset + 1], pool.position[offset + 2]);
+      this.quaternion.set(pool.quaternion[slot * 4], pool.quaternion[slot * 4 + 1], pool.quaternion[slot * 4 + 2], pool.quaternion[slot * 4 + 3]);
+      this.city.movePart(part, this.point, this.quaternion);
+      if (pool.state[slot] !== BODY_ASLEEP) continue;
+      part.body = -1;
+      part.down = true;
+      releaseBody(pool, slot);
+      this.bodyParts[slot] = null;
+    }
+  }
+
+  /** A blast also picks up rubble already lying in its radius and throws it again. */
+  private throwLoose(centre: THREE.Vector3, force: number, radius: number): void {
+    impulseFrom(this.rigid, centre.x, centre.y, centre.z, force, radius, random);
+    let thrown = 0;
+    this.city.query(centre.x, centre.z, radius, (structure) => {
+      if (structure.released === 0) return;
+      for (const part of structure.parts) {
+        if (thrown >= MAX_RETHROWN) return;
+        if (!part.down || part.hidden || part.position.distanceTo(centre) > radius) continue;
+        this.releasePart(structure, part, centre, force);
+        thrown += 1;
+      }
+    });
+  }
+
+  /** A random flammable part still standing or falling, for flames to come off; null if there is none. */
+  private flamePart(structure: Structure): Part | null {
+    const { parts } = structure;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const part = parts[Math.floor(random() * parts.length)];
+      if (part.flammable && !part.hidden && !part.down) return part;
+    }
+    return null;
   }
 
   explode(x: number, y: number, z: number, size: number): void {
@@ -348,6 +519,8 @@ export class Inferno {
       }
     }
 
+    this.throwLoose(centre, 40 * size, radius);
+
     const ground = terrainHeight(x, z);
     if (ground > WATER_LEVEL) {
       this.city.addScorch(x, ground, z, radius * 1.5);
@@ -367,11 +540,14 @@ export class Inferno {
     this.updateFireballs(dt);
     this.updateBurning(dt, viewer);
     this.updateGroundFires(dt);
+    this.updateCollapses(dt);
+    this.updateBodies(dt);
     this.updateDebris(dt);
     this.updateEffects(dt);
     this.updateLights(dt, viewer);
     this.fire.update(time, pixelScale, fog);
     this.smoke.update(time, pixelScale, fog);
+    this.city.flush();
   }
 
   private updateFireballs(dt: number): void {
@@ -416,6 +592,8 @@ export class Inferno {
           continue;
         }
       }
+      // The roof falls in while the walls still burn.
+      if (structure.released === 0 && structure.fuel < 2.5) this.releaseStage(structure, 0, null, 0);
       if (structure.fuel <= 0) this.collapse(structure, null, 0);
     }
 
@@ -426,9 +604,10 @@ export class Inferno {
         const structure = live[Math.floor(random() * live.length)];
         const { building } = structure;
         if (Math.hypot(building.x - viewer.x, building.z - viewer.z) > 1500) continue;
-        const x = building.x + spread(building.width * 0.5);
-        const z = building.z + spread(building.depth * 0.5);
-        const y = building.y + random() * (building.height + building.roof);
+        const part = this.flamePart(structure);
+        const x = part ? part.position.x + spread(part.size.x * 0.45) : building.x + spread(building.width * 0.5);
+        const z = part ? part.position.z + spread(part.size.z * 0.45) : building.z + spread(building.depth * 0.5);
+        const y = part ? part.position.y + spread(part.size.y * 0.4) : building.y + random() * (building.height + building.roof);
         const big = 0.7 + structure.radius * 0.07;
         this.fire.emit(x, y, z, spread(2.5), 4 + random() * 8, spread(2.5), 0.5 + random() * 0.7, (3.4 + random() * 3.6) * big, FIRE, this.time);
         if (index % 5 === 0) {

@@ -82,7 +82,7 @@ void main() {
     color = mix(vec3(0.34, 0.29, 0.23), vec3(0.2, 0.18, 0.16), vLife);
     alpha = soft * 0.5 * fadeIn * (1.0 - vLife);
   } else if (vKind > 2.5) {
-    color = vec3(1.0, 0.82, 0.55) * 7.0 * (1.0 - vLife);
+    color = vec3(1.0, 0.78, 0.5) * 3.2 * (1.0 - vLife);
     alpha = soft * (1.0 - vLife);
   } else if (vKind > 1.5) {
     float lit = 1.0 - smoothstep(0.0, 0.3, vLife);
@@ -98,7 +98,7 @@ void main() {
     vec3 mid = vec3(1.0, 0.38, 0.05) * 1.5;
     vec3 cool = vec3(0.45, 0.05, 0.01) * 0.6;
     color = vLife < 0.22 ? mix(hot, mid, vLife / 0.22) : mix(mid, cool, (vLife - 0.22) / 0.78);
-    alpha = soft * fadeIn * (1.0 - vLife) * (0.65 + 0.35 * vSeed);
+    alpha = soft * fadeIn * (1.0 - vLife) * (0.42 + 0.28 * vSeed);
   }
 
   if (uAdditive > 0.5) {

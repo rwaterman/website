@@ -1,13 +1,27 @@
 import * as THREE from 'three';
+import { blueprint, FLAMMABLE_MATERIALS, lastStage, type PartMaterial, type PartSpec } from './architecture';
 import { boundingRadius, generateTown, mulberry32, type Building, type Town } from './layout';
 import { TOWNS } from './terrain';
 import { roofTexture, scorchTexture, stoneTexture, timberTexture } from './world';
 
 export type StructureState = 'intact' | 'burning' | 'ruined';
 
-interface Part {
+/** One instance of a blueprint part: where it stands, and the rigid body carrying it once it falls. */
+export interface Part {
   mesh: THREE.InstancedMesh;
   index: number;
+  material: PartMaterial;
+  stage: number;
+  flammable: boolean;
+  /** World-space centre, orientation and full size; kept current while the part is falling. */
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  size: THREE.Vector3;
+  /** Rigid-body slot while falling, otherwise -1. */
+  body: number;
+  /** Fell and came to rest; a later blast can throw it again. */
+  down: boolean;
+  hidden: boolean;
 }
 
 export interface Structure {
@@ -30,35 +44,40 @@ export interface Structure {
   radius: number;
   top: number;
   blades: THREE.Object3D | null;
+  /** Highest collapse stage among the parts. */
+  stages: number;
+  /** Next stage to let go of; stages below it are already falling or down. */
+  released: number;
 }
 
 const CELL = 48;
 const CHAR = new THREE.Color(0.035, 0.03, 0.028);
 
-const PLASTER = [0xf0e6d2, 0xe6d3b0, 0xd9c7a4, 0xe9cfc0, 0xcfd2c2, 0xf2ead8];
-const ROOFS = [0xb9a05c, 0xa98e52, 0x8c4a34, 0x9c563a, 0x565a66, 0xc0aa66, 0x7a6a50];
-
-function basedBox(): THREE.BoxGeometry {
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  geometry.translate(0, 0.5, 0);
-  return geometry;
+function box(): THREE.BoxGeometry {
+  return new THREE.BoxGeometry(1, 1, 1);
 }
 
-/** Unit gable roof: ridge along Z, eaves at y = 0, apex at y = 1. */
-function gableGeometry(): THREE.BufferGeometry {
-  const half = 0.5;
+/** Unit triangular prism centred on the origin: base at y = -0.5, apex ridge at y = 0.5 along z. */
+function wedgeGeometry(): THREE.BufferGeometry {
+  const h = 0.5;
+  // prettier-ignore
   const positions = [
+    // front and back triangles
+    -h, -h, h, h, -h, h, 0, h, h,
+    h, -h, -h, -h, -h, -h, 0, h, -h,
     // left slope
-    -half, 0, half, 0, 1, half, 0, 1, -half, -half, 0, half, 0, 1, -half, -half, 0, -half,
+    -h, -h, -h, -h, -h, h, 0, h, h, -h, -h, -h, 0, h, h, 0, h, -h,
     // right slope
-    half, 0, half, half, 0, -half, 0, 1, -half, half, 0, half, 0, 1, -half, 0, 1, half,
-    // gable ends
-    -half, 0, half, half, 0, half, 0, 1, half, half, 0, -half, -half, 0, -half, 0, 1, -half,
+    h, -h, h, h, -h, -h, 0, h, -h, h, -h, h, 0, h, -h, 0, h, h,
+    // underside
+    -h, -h, -h, h, -h, -h, h, -h, h, -h, -h, -h, h, -h, h, -h, -h, h,
   ];
+  // prettier-ignore
   const uvs = [
-    0, 0, 0, 1, 2, 1, 0, 0, 2, 1, 2, 0,
-    0, 0, 2, 0, 2, 1, 0, 0, 2, 1, 0, 1,
     0, 0, 1, 0, 0.5, 1, 0, 0, 1, 0, 0.5, 1,
+    0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1,
+    0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1,
+    0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1,
   ];
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -70,8 +89,12 @@ function gableGeometry(): THREE.BufferGeometry {
 function spireGeometry(): THREE.BufferGeometry {
   const geometry = new THREE.ConeGeometry(0.72, 1, 4, 1);
   geometry.rotateY(Math.PI / 4);
-  geometry.translate(0, 0.5, 0);
   return geometry;
+}
+
+interface DirtyRange {
+  min: number;
+  max: number;
 }
 
 export class City {
@@ -83,47 +106,50 @@ export class City {
   razed = 0;
 
   private readonly grid = new Map<number, Structure[]>();
-  private readonly timber: THREE.InstancedMesh;
-  private readonly stone: THREE.InstancedMesh;
-  private readonly roof: THREE.InstancedMesh;
-  private readonly spire: THREE.InstancedMesh;
-  private readonly merlon: THREE.InstancedMesh;
-  private readonly glow: THREE.InstancedMesh;
-  private readonly rubble: THREE.InstancedMesh;
+  private readonly meshes: Record<PartMaterial, THREE.InstancedMesh>;
   private readonly scorch: THREE.InstancedMesh;
   private readonly counts = new Map<THREE.InstancedMesh, number>();
+  private readonly dirty = new Map<THREE.InstancedMesh, DirtyRange>();
+  private readonly colorsDirty = new Set<THREE.InstancedMesh>();
   private readonly matrix = new THREE.Matrix4();
   private readonly quaternion = new THREE.Quaternion();
+  private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ');
   private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly color = new THREE.Color();
-  private readonly base = new Map<Structure, THREE.Color[]>();
+  private readonly hiddenScale = new THREE.Vector3(0, 0, 0);
+  private readonly base = new Map<Part, THREE.Color>();
   private readonly random = mulberry32(99);
   private scorchCursor = 0;
-  private rubbleCursor = 0;
 
   constructor() {
     this.towns = TOWNS.map((site, index) => generateTown(site, index));
     const buildings = this.towns.flatMap((town) => town.buildings);
-    const count = (kinds: Building['kind'][]): number => buildings.filter((building) => kinds.includes(building.kind)).length;
+    const plans = buildings.map((building) => ({ building, parts: blueprint(building) }));
+    const capacity = (material: PartMaterial): number => plans.reduce((sum, plan) => sum + plan.parts.filter((part) => part.material === material).length, 0);
 
-    const houses = count(['house']);
-    const stoneCount = count(['hall', 'tower', 'keep', 'wall', 'powder', 'windmill']);
-    this.timber = this.instanced(basedBox(), new THREE.MeshLambertMaterial({ map: timberTexture() }), houses);
-    this.stone = this.instanced(basedBox(), new THREE.MeshLambertMaterial({ map: stoneTexture() }), stoneCount);
-    this.roof = this.instanced(gableGeometry(), new THREE.MeshLambertMaterial({ map: roofTexture(), side: THREE.DoubleSide }), houses + count(['hall', 'powder']));
-    this.spire = this.instanced(spireGeometry(), new THREE.MeshLambertMaterial({ map: roofTexture(), flatShading: true }), count(['tower', 'windmill']));
-    this.merlon = this.instanced(basedBox(), new THREE.MeshLambertMaterial({ map: stoneTexture() }), count(['wall']) * 4 + count(['keep']) * 24);
-    this.glow = this.instanced(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.5), side: THREE.DoubleSide }), houses * 2 + count(['keep', 'hall']) * 6);
-    this.rubble = this.instanced(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshLambertMaterial({ flatShading: true }), buildings.length);
+    const timber = timberTexture();
+    const stone = stoneTexture();
+    const roof = roofTexture();
+    const lambert = (map: THREE.Texture | null, options: THREE.MeshLambertMaterialParameters = {}): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ map, ...options });
+    this.meshes = {
+      plaster: this.instanced(box(), lambert(timber), capacity('plaster')),
+      wood: this.instanced(box(), lambert(null), capacity('wood')),
+      roof: this.instanced(box(), lambert(roof), capacity('roof')),
+      gable: this.instanced(wedgeGeometry(), lambert(timber), capacity('gable')),
+      stone: this.instanced(box(), lambert(stone), capacity('stone')),
+      stoneGable: this.instanced(wedgeGeometry(), lambert(stone), capacity('stoneGable')),
+      spire: this.instanced(spireGeometry(), lambert(roof, { flatShading: true }), capacity('spire')),
+      glow: this.instanced(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.5), side: THREE.DoubleSide }), capacity('glow')),
+    };
     this.scorch = this.instanced(
       new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ map: scorchTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
       buildings.length + 160,
     );
     this.scorch.renderOrder = 1;
-    for (const mesh of [this.rubble, this.scorch]) mesh.count = 0;
+    this.scorch.count = 0;
 
-    for (const building of buildings) this.add(building);
+    for (const plan of plans) this.add(plan.building, plan.parts);
     for (const [mesh, used] of this.counts) {
       mesh.count = used;
       mesh.instanceMatrix.needsUpdate = true;
@@ -140,38 +166,8 @@ export class City {
     return mesh;
   }
 
-  /** Writes one instance in building-local space (x right, y up from the ground, z forward). */
-  private addPart(
-    structure: Structure,
-    mesh: THREE.InstancedMesh,
-    local: THREE.Vector3,
-    scale: THREE.Vector3,
-    hex: number,
-    spin = 0,
-  ): void {
-    const { building } = structure;
-    const index = this.counts.get(mesh) ?? 0;
-    this.counts.set(mesh, index + 1);
-    const cos = Math.cos(building.rotation);
-    const sin = Math.sin(building.rotation);
-    const position = new THREE.Vector3(
-      building.x + local.x * cos + local.z * sin,
-      building.y + local.y,
-      building.z - local.x * sin + local.z * cos,
-    );
-    this.quaternion.setFromAxisAngle(this.up, building.rotation + spin);
-    this.matrix.compose(position, this.quaternion, scale);
-    mesh.setMatrixAt(index, this.matrix);
-    const color = new THREE.Color(hex);
-    mesh.setColorAt(index, color);
-    structure.parts.push({ mesh, index });
-    const colors = this.base.get(structure) ?? [];
-    colors.push(color);
-    this.base.set(structure, colors);
-  }
-
-  private add(building: Building): void {
-    const { kind, width, depth, height, roof, tint } = building;
+  private add(building: Building, specs: PartSpec[]): void {
+    const { kind, height, roof, tint } = building;
     const flammable = kind === 'house' || kind === 'hall' || kind === 'windmill' || kind === 'powder';
     const structure: Structure = {
       building,
@@ -187,59 +183,10 @@ export class City {
       radius: boundingRadius(building),
       top: building.y + height + roof,
       blades: null,
+      stages: lastStage(specs),
+      released: 0,
     };
-    const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
-    const pick = (palette: number[], offset: number): number => palette[Math.floor(((tint + offset) % 1) * palette.length)];
-    const grey = new THREE.Color().setHSL(0.07, 0.06, 0.62 + tint * 0.22).getHex();
-    // Sunk a little so sloping ground never shows a gap under the walls.
-    const sink = -1.5;
-    const wallHeight = height - sink;
-
-    if (kind === 'house') {
-      this.addPart(structure, this.timber, v(0, sink, 0), v(width, wallHeight, depth), pick(PLASTER, 0));
-      this.addPart(structure, this.roof, v(0, height, 0), v(width * 1.16, roof, depth * 1.1), pick(ROOFS, 0.37));
-      const lit = tint > 0.25;
-      if (lit) {
-        this.addPart(structure, this.glow, v(width * 0.2, height * 0.55, depth / 2 + 0.06), v(0.9, 1.1, 1), 0xffffff);
-        this.addPart(structure, this.glow, v(-width * 0.2, height * 0.55, -depth / 2 - 0.06), v(0.9, 1.1, 1), 0xffffff);
-      }
-    } else if (kind === 'hall') {
-      this.addPart(structure, this.stone, v(0, sink, 0), v(width, wallHeight, depth), grey);
-      this.addPart(structure, this.roof, v(0, height, 0), v(width * 1.1, roof, depth * 1.04), 0x565a66);
-      for (const side of [-1, 1]) {
-        for (const along of [-0.3, 0, 0.3]) {
-          this.addPart(structure, this.glow, v((side * width) / 2 + side * 0.06, height * 0.55, along * depth), v(1.2, 5, 1), 0xffffff, Math.PI / 2);
-        }
-      }
-    } else if (kind === 'powder') {
-      this.addPart(structure, this.stone, v(0, sink, 0), v(width, wallHeight, depth), 0x8a8478);
-      this.addPart(structure, this.roof, v(0, height, 0), v(width * 1.15, roof, depth * 1.1), 0x8c4a34);
-    } else if (kind === 'tower' || kind === 'windmill') {
-      this.addPart(structure, this.stone, v(0, sink, 0), v(width, wallHeight, depth), kind === 'windmill' ? 0xd8cfbc : grey);
-      this.addPart(structure, this.spire, v(0, height, 0), v(width * 1.25, roof, depth * 1.25), kind === 'windmill' ? 0x7a6a50 : 0x565a66);
-    } else if (kind === 'wall') {
-      this.addPart(structure, this.stone, v(0, sink, 0), v(width, wallHeight, depth), grey);
-      for (const along of [-0.375, -0.125, 0.125, 0.375]) {
-        this.addPart(structure, this.merlon, v(along * width, height, depth * 0.3), v(width * 0.13, 1.8, 1.1), grey);
-      }
-    } else {
-      this.addPart(structure, this.stone, v(0, sink, 0), v(width, wallHeight, depth), grey);
-      for (const side of [0, 1, 2, 3]) {
-        const angle = (side * Math.PI) / 2;
-        for (const along of [-0.42, -0.25, -0.085, 0.085, 0.25, 0.42]) {
-          const x = Math.cos(angle) * width * 0.47 - Math.sin(angle) * along * width;
-          const z = Math.sin(angle) * depth * 0.47 + Math.cos(angle) * along * depth;
-          this.addPart(structure, this.merlon, v(x, height, z), v(2.6, 3, 2.6), grey);
-        }
-      }
-      for (const side of [0, 1, 2, 3]) {
-        const angle = (side * Math.PI) / 2;
-        const x = Math.cos(angle) * (width / 2 + 0.06);
-        const z = Math.sin(angle) * (depth / 2 + 0.06);
-        this.addPart(structure, this.glow, v(x, height * 0.7, z), v(1.1, 3.4, 1), 0xffffff, side % 2 === 0 ? Math.PI / 2 : 0);
-      }
-    }
-
+    for (const spec of specs) structure.parts.push(this.addPart(building, spec));
     if (kind === 'windmill') structure.blades = this.createBlades(building);
 
     this.structures.push(structure);
@@ -247,6 +194,25 @@ export class City {
     const cell = this.grid.get(key);
     if (cell) cell.push(structure);
     else this.grid.set(key, [structure]);
+  }
+
+  private addPart(building: Building, spec: PartSpec): Part {
+    const mesh = this.meshes[spec.material];
+    const index = this.counts.get(mesh) ?? 0;
+    this.counts.set(mesh, index + 1);
+    const cos = Math.cos(building.rotation);
+    const sin = Math.sin(building.rotation);
+    const position = new THREE.Vector3(building.x + spec.x * cos + spec.z * sin, building.y + spec.y, building.z - spec.x * sin + spec.z * cos);
+    const quaternion = new THREE.Quaternion()
+      .setFromAxisAngle(this.up, building.rotation)
+      .multiply(this.quaternion.setFromEuler(this.euler.set(spec.pitch, spec.yaw, spec.roll, 'YXZ')));
+    const size = new THREE.Vector3(spec.width, spec.height, spec.depth);
+    mesh.setMatrixAt(index, this.matrix.compose(position, quaternion, size));
+    const color = new THREE.Color(spec.color);
+    mesh.setColorAt(index, color);
+    const part: Part = { mesh, index, material: spec.material, stage: spec.stage, flammable: FLAMMABLE_MATERIALS.has(spec.material), position, quaternion, size, body: -1, down: false, hidden: false };
+    this.base.set(part, color);
+    return part;
   }
 
   private createBlades(building: Building): THREE.Object3D {
@@ -272,6 +238,16 @@ export class City {
 
   private cellKey(x: number, z: number): number {
     return (Math.floor(x / CELL) + 512) * 1024 + Math.floor(z / CELL) + 512;
+  }
+
+  private markDirty(mesh: THREE.InstancedMesh, index: number): void {
+    const range = this.dirty.get(mesh);
+    if (range) {
+      range.min = Math.min(range.min, index);
+      range.max = Math.max(range.max, index);
+    } else {
+      this.dirty.set(mesh, { min: index, max: index });
+    }
   }
 
   /** Calls `visit` for every structure whose footprint is within `radius` of the point. */
@@ -307,19 +283,37 @@ export class City {
     return true;
   }
 
-  /** Darkens a burning structure toward charcoal as its fuel runs down. */
+  /** Darkens a burning structure toward charcoal as its fuel runs down; stone only soots a little. */
   char(structure: Structure, amount: number): void {
-    const colors = this.base.get(structure);
-    if (!colors) return;
-    for (const [index, part] of structure.parts.entries()) {
-      if (part.mesh === this.glow) continue;
-      this.color.copy(colors[index]).lerp(CHAR, amount);
+    for (const part of structure.parts) {
+      if (part.material === 'glow') continue;
+      const base = this.base.get(part);
+      if (!base) continue;
+      this.color.copy(base).lerp(CHAR, part.flammable ? amount : amount * 0.45);
       part.mesh.setColorAt(part.index, this.color);
-      if (part.mesh.instanceColor) part.mesh.instanceColor.needsUpdate = true;
+      this.colorsDirty.add(part.mesh);
     }
   }
 
-  /** Removes the structure's meshes and leaves rubble and a scorch mark. Returns false if already down. */
+  /** Writes a falling part's current transform into its instance. */
+  movePart(part: Part, position: THREE.Vector3, quaternion: THREE.Quaternion): void {
+    part.position.copy(position);
+    part.quaternion.copy(quaternion);
+    part.mesh.setMatrixAt(part.index, this.matrix.compose(position, quaternion, part.size));
+    this.markDirty(part.mesh, part.index);
+  }
+
+  hidePart(part: Part): void {
+    if (part.hidden) return;
+    part.hidden = true;
+    part.mesh.setMatrixAt(part.index, this.matrix.compose(part.position, part.quaternion, this.hiddenScale));
+    this.markDirty(part.mesh, part.index);
+  }
+
+  /**
+   * Marks the structure as razed: it stops burning, its windows go dark and it leaves a scorch mark.
+   * Its parts are left where they stand for the fire system to bring down. Returns false if already down.
+   */
   ruin(structure: Structure): boolean {
     if (structure.state === 'ruined') return false;
     structure.state = 'ruined';
@@ -327,29 +321,14 @@ export class City {
     this.burning.delete(structure);
     this.smouldering.add(structure);
     this.razed += 1;
-
-    this.matrix.makeScale(0, 0, 0);
     for (const part of structure.parts) {
-      part.mesh.setMatrixAt(part.index, this.matrix);
-      part.mesh.instanceMatrix.needsUpdate = true;
+      if (part.material === 'glow') this.hidePart(part);
     }
     if (structure.blades) {
       this.group.remove(structure.blades);
       structure.blades = null;
     }
-
     const { building } = structure;
-    const position = new THREE.Vector3(building.x, building.y + 0.5, building.z);
-    this.quaternion.setFromEuler(new THREE.Euler(this.random() * 0.4, building.rotation, this.random() * 0.4));
-    this.matrix.compose(position, this.quaternion, new THREE.Vector3(building.width * 0.85, 1.6 + building.height * 0.09, building.depth * 0.85));
-    this.rubble.setMatrixAt(this.rubbleCursor, this.matrix);
-    const shade = structure.flammable ? 0.05 + this.random() * 0.04 : 0.2 + this.random() * 0.1;
-    this.rubble.setColorAt(this.rubbleCursor, this.color.setRGB(shade * 1.1, shade, shade * 0.95));
-    this.rubbleCursor += 1;
-    this.rubble.count = this.rubbleCursor;
-    this.rubble.instanceMatrix.needsUpdate = true;
-    if (this.rubble.instanceColor) this.rubble.instanceColor.needsUpdate = true;
-
     this.addScorch(building.x, building.y, building.z, structure.radius * 3.4);
     return true;
   }
@@ -368,5 +347,20 @@ export class City {
     for (const structure of this.structures) {
       if (structure.blades) structure.blades.rotateZ(dt * (structure.state === 'burning' ? 2.4 : 0.7));
     }
+  }
+
+  /** Uploads only the instance ranges that moved this frame. */
+  flush(): void {
+    for (const [mesh, range] of this.dirty) {
+      const attribute = mesh.instanceMatrix;
+      attribute.clearUpdateRanges();
+      attribute.addUpdateRange(range.min * 16, (range.max - range.min + 1) * 16);
+      attribute.needsUpdate = true;
+    }
+    this.dirty.clear();
+    for (const mesh of this.colorsDirty) {
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    this.colorsDirty.clear();
   }
 }

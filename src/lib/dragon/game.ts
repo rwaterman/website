@@ -68,8 +68,8 @@ interface World {
 
 type Phase = 'intro' | 'arrive' | 'flight';
 
-const HIGH: Quality = { fireParticles: 16_000, smokeParticles: 5000, debris: 1400, emitBudget: 200, breathRate: 520, chunkScale: 1, terrainSegments: 220, trees: 2600, clouds: 300, pixelRatio: 2, samples: 4 };
-const LOW: Quality = { fireParticles: 7000, smokeParticles: 2400, debris: 600, emitBudget: 90, breathRate: 300, chunkScale: 0.55, terrainSegments: 140, trees: 1100, clouds: 130, pixelRatio: 1.25, samples: 0 };
+const HIGH: Quality = { fireParticles: 16_000, smokeParticles: 5000, debris: 1400, emitBudget: 200, breathRate: 520, chunkScale: 1, bodies: 2400, terrainSegments: 220, trees: 2600, clouds: 300, pixelRatio: 2, samples: 4 };
+const LOW: Quality = { fireParticles: 7000, smokeParticles: 2400, debris: 600, emitBudget: 90, breathRate: 300, chunkScale: 0.55, bodies: 1100, terrainSegments: 140, trees: 1100, clouds: 130, pixelRatio: 1.25, samples: 0 };
 
 const MAX_RENDER_WIDTH = 2200;
 const BASE_FOG = 0.00038;

@@ -216,7 +216,7 @@ function speckle(context: CanvasRenderingContext2D, random: () => number, size: 
   }
 }
 
-/** White plaster with dark oak framing; the instance colour tints the plaster. */
+/** White plaster with dark oak framing; the instance colour tints the plaster. Doors and windows are parts of their own. */
 export function timberTexture(): THREE.CanvasTexture {
   const size = 256;
   return canvasTexture(size, (context, random) => {
@@ -237,16 +237,6 @@ export function timberTexture(): THREE.CanvasTexture {
     beam(6, 128, 90, 6, 9);
     beam(250, 128, 166, 6, 9);
     beam(90, 250, 166, 128, 9);
-    // A shuttered window and a door, so walls read as lived in from the air.
-    context.fillStyle = '#1c1410';
-    context.fillRect(108, 34, 40, 56);
-    context.fillStyle = '#3a2a1d';
-    context.fillRect(24, 160, 46, 90);
-    context.strokeStyle = '#33241a';
-    context.lineWidth = 5;
-    context.strokeRect(108, 34, 40, 56);
-    beam(128, 34, 128, 90, 3);
-    beam(108, 62, 148, 62, 3);
   });
 }
 
