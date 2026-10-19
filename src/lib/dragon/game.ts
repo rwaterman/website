@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { DragonAudio, type AudioFrame, type TownSound } from './audio';
-import { auditionVoices, type VoiceStats } from './audition';
+import type { VoiceStats } from './audition';
 import { City, type Structure } from './city';
 import type { BuildingKind } from './layout';
 import { Dragon } from './dragon';
@@ -289,7 +289,8 @@ class Game {
     this.input.requestLock();
 
     window.__dragon = {
-      audition: auditionVoices,
+      // Loaded only when asked for, so the offline renderer stays out of the game chunk.
+      audition: async () => (await import('./audition')).auditionVoices(),
       strike: () => this.strike(),
       advance: (dt, steps) => {
         this.manual = true;
