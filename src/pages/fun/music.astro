@@ -1,0 +1,23 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FunNav from '../../components/FunNav.astro';
+import ShaderStage from '../../components/ShaderStage';
+import TrackerMuseum from '../../components/TrackerMuseum.astro';
+import { shaders } from '../../config/shaders';
+import { exhibits } from '../../config/tracker-museum';
+
+const stageShaders = shaders.map(({ id, title, caption }) => ({ id, title, caption }));
+---
+
+<Layout
+  background="synthgrid"
+  title="Mod Music File Museum"
+  eyebrow="Fun"
+  heading="Music"
+  lede="Music from the Amiga and PC demoscenes, played the way it was written. In a fullscreen shader, M starts another module."
+  description={`A museum of ${exhibits.length} classic tracker modules played live in the browser with a scrolling pattern display.`}
+>
+  <FunNav />
+  <TrackerMuseum />
+  <ShaderStage client:load shaders={stageShaders} music />
+</Layout>

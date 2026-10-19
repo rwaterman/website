@@ -18,6 +18,8 @@ const pages: PageCase[] = [
   { path: '/contact', title: 'Contact · Rick Waterman', heading: 'Contact', background: 'mountains', current: 'Contact' },
   { path: '/legal', title: 'Legal · Rick Waterman', heading: 'Legal', background: 'clouds' },
   { path: '/fun', title: 'Fun · Rick Waterman', heading: 'Fun', background: 'hex', current: 'Fun' },
+  { path: '/fun/music', title: 'Mod Music File Museum · Rick Waterman', heading: 'Music', background: 'synthgrid', current: 'Fun' },
+  { path: '/fun/shaders', title: 'Shader Collection · Rick Waterman', heading: 'Shaders', background: 'kaleido', current: 'Fun' },
 ];
 const notFound: PageCase = { path: '/no-such-page', title: '404 · Rick Waterman', heading: 'Not found', background: 'blackhole' };
 
