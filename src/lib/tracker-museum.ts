@@ -505,6 +505,10 @@ function mount(root: HTMLElement): void {
     const others = exhibits.filter((exhibit) => exhibit !== current);
     void play(others[Math.floor(Math.random() * others.length)] ?? current);
   });
+  // The dragon easter egg brings its own sound and asks the museum to step aside.
+  document.addEventListener('tracker:pause', () => {
+    if (state === 'playing') void onToggle();
+  });
 
   if (reducedMotion) {
     pattern.hidden = true;

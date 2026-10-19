@@ -16,12 +16,12 @@ export interface TrackerHandlers {
 
 export class TrackerPlayer {
   private context: AudioContext | undefined;
+  private gain: GainNode | undefined;
+  private volume = 1;
   private node: Promise<AudioWorkletNode> | undefined;
   /** Id of the newest `play`; events and downloads tagged with an older one are dropped. */
   private request = 0;
   private fetchController: AbortController | undefined;
-  private gain: GainNode | undefined;
-  private volume = 1;
 
   constructor(private readonly handlers: TrackerHandlers) {}
 
@@ -61,10 +61,22 @@ export class TrackerPlayer {
     await this.context?.resume();
   }
 
-  /** Output level from 0 to 1; held until the first `play` creates the audio graph. */
+  /** Output level, 0..1, eased over a fraction of a second so changes do not click. */
   setVolume(volume: number): void {
     this.volume = volume;
-    if (this.gain) this.gain.gain.value = volume;
+    if (!this.context || !this.gain) return;
+    this.gain.gain.setTargetAtTime(volume, this.context.currentTime, 0.08);
+  }
+
+  /** Stops playback for good and releases the audio thread. */
+  async dispose(): Promise<void> {
+    this.request += 1;
+    this.fetchController?.abort();
+    const context = this.context;
+    this.context = undefined;
+    this.node = undefined;
+    this.gain = undefined;
+    if (context && context.state !== 'closed') await context.close();
   }
 
   async seek(seconds: number): Promise<void> {
@@ -93,7 +105,8 @@ export class TrackerPlayer {
     await context.audioWorklet.addModule(workletUrl);
     const node = new AudioWorkletNode(context, 'tracker', { numberOfInputs: 0, outputChannelCount: [2] });
     node.port.onmessage = (event: MessageEvent<TrackerEvent>) => this.relay(event.data);
-    this.gain = new GainNode(context, { gain: this.volume });
+    this.gain = context.createGain();
+    this.gain.gain.value = this.volume;
     node.connect(this.gain).connect(context.destination);
     return node;
   }
