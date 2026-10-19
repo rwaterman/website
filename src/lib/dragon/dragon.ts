@@ -176,6 +176,7 @@ export class Dragon {
   private readonly reins: THREE.Line[] = [];
   private readonly forward = new THREE.Vector3();
   private readonly scratch = new THREE.Vector3();
+  private readonly reinEnd = new THREE.Vector3();
   private readonly basis = new THREE.Matrix4();
   private sway = 0;
   private nod = 0;
@@ -384,7 +385,7 @@ export class Dragon {
       const side = index === 0 ? -1 : 1;
       const attribute = line.geometry.attributes.position as THREE.BufferAttribute;
       const start = this.scratch.set(side * 0.28, 1.5, 0.1);
-      const end = new THREE.Vector3(side * 0.7, -0.1, -1.6).applyMatrix4(this.head.matrix);
+      const end = this.reinEnd.set(side * 0.7, -0.1, -1.6).applyMatrix4(this.head.matrix);
       for (let point = 0; point < 8; point += 1) {
         const along = point / 7;
         attribute.setXYZ(

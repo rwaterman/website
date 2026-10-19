@@ -101,6 +101,7 @@ html.dragon-active body { display: none !important; }
 [data-dragon-stage] [hidden] { display: none !important; }
 .dragon-hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s ease; }
 .dragon-hud[data-on] { opacity: 1; }
+.dragon-hud:not([data-on]) .dragon-button { pointer-events: none; }
 .dragon-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(8, 2, 1, 0.55) 100%); }
 .dragon-flash { position: absolute; inset: 0; background: #fff6ea; opacity: 0; pointer-events: none; }
 .dragon-flash[data-on] { animation: dragon-flash 1.5s ease-out forwards; }
@@ -351,16 +352,21 @@ class Game {
     );
     this.input.holdFire(find('[data-fire]'));
     find('[data-pause]').addEventListener('click', () => this.setPaused(false), { signal });
-    find('[data-keys]').innerHTML = KEYS_DESKTOP;
+    const showTouchControls = (): void => {
+      find('[data-fire]').hidden = false;
+      find('[data-bomb]').hidden = false;
+      find('[data-keys]').innerHTML = KEYS_TOUCH;
+    };
+    // A phone or tablet gets its buttons from the start, not after the first tap on the sky.
+    if (matchMedia('(pointer: coarse)').matches) showTouchControls();
+    else find('[data-keys]').innerHTML = KEYS_DESKTOP;
 
     this.stage.addEventListener(
       'pointerdown',
       (event) => {
         if (this.audio && this.audio.state === 'suspended' && !this.paused) void this.resumeAudio(this.audio);
         if (event.pointerType === 'touch') {
-          find('[data-fire]').hidden = false;
-          find('[data-bomb]').hidden = false;
-          find('[data-keys]').innerHTML = KEYS_TOUCH;
+          showTouchControls();
         } else if (!this.input.locked && !this.paused) {
           this.input.requestLock();
         }
@@ -393,7 +399,6 @@ class Game {
     this.renderer.setSize(width, height, false);
     this.composer.setPixelRatio(ratio);
     this.composer.setSize(width, height);
-    this.bloom.resolution.set((width * ratio) / 2, (height * ratio) / 2);
     if (this.world) {
       this.world.camera.aspect = width / height;
       this.world.camera.updateProjectionMatrix();
