@@ -12,8 +12,12 @@ const backgroundShader = background ? shaders.find((shader) => shader.id === bac
 if (background && !backgroundShader) throw new Error(`Unknown background shader "${background}"`);
 
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
-const isCurrent = (href: string) =>
-  !href.startsWith('http') && (href.replace(/\/$/, '') || '/') === current;
+// A section's own pages count as it: /fun/music marks Fun.
+const isCurrent = (href: string): boolean => {
+  if (href.startsWith('http')) return false;
+  const path = href.replace(/\/$/, '') || '/';
+  return path === current || (path !== '/' && current.startsWith(`${path}/`));
+};
 ---
 
 <header class="border-b border-rule bg-bg/85">

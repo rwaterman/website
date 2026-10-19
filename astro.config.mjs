@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
+import react from '@astrojs/react';
 
 // The dragon easter egg (footer glyph, src/lib/dragon) ships in every build except prod.
 // DRAGON=on turns it on for a prod build without a code change.
@@ -12,7 +13,7 @@ const dragonEnabled = process.env.SITE !== 'https://rickwaterman.com' || process
 // vs https://rickwaterman.com) so canonical URLs and sitemaps are correct.
 export default defineConfig({
   site: process.env.SITE,
-  integrations: [sitemap()],
+  integrations: [sitemap(), react()],
   // The dev toolbar floats over the footer in local previews; set to true to bring it back.
   devToolbar: { enabled: false },
   vite: {

@@ -37,6 +37,11 @@ export async function shaderState(target: Locator): Promise<ShaderState> {
   });
 }
 
+/** The stage is a React island; its openers do nothing until it has hydrated. */
+export async function waitForStage(page: Page): Promise<void> {
+  await expect(page.locator('[data-stage][data-ready]')).toBeAttached();
+}
+
 export async function expectShaderPainted(target: Locator, label: string, soft = false): Promise<void> {
   const assertion = soft ? expect.soft : expect;
   await assertion.poll(() => shaderState(target), { message: `shader ${label}`, timeout: 20_000 }).toBe('painted');

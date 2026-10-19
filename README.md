@@ -1,8 +1,10 @@
 # website
 
 Source for [rickwaterman.com](https://rickwaterman.com) — Rick Waterman's personal site.
-A static site (bio, resume, links + feeds, share feed, 404, plus an unlisted fun page) built with
+A static site (bio, resume, links + feeds, share feed, 404, plus the fun pages) built with
 [Astro](https://astro.build/) and Tailwind CSS, deployed to S3 + CloudFront with AWS CDK.
+Pages are Astro; the few pieces that hold interactive state (the share feed, the fullscreen
+shader stage) are React components hydrated as Astro islands.
 It is the hub for the sibling [`blog`](https://github.com/rwaterman/blog) (Hugo) and
 [`notes`](https://github.com/rwaterman/notes) (Quartz) sites, which live on subdomains and
 share infrastructure owned by this repo.
@@ -27,10 +29,11 @@ npm run test:e2e   # Playwright: builds, serves on :4399, runs e2e/ in headless 
 End-to-end tests live in `e2e/` and need a one-time `npx playwright install chromium`
 (`--with-deps` on Debian/Ubuntu). They cover every page and its background shader, the nav,
 the contact form against a stubbed `/api/contact` (the real endpoint only exists behind
-CloudFront), and `/fun`, where the tabs must switch and deep-link, every shader in `src/shaders/`
-must compile and paint, the Mod Music File Museum must load, play, pause, seek, advance, and report a
-failed download, and each room must reach the other (a random module from the stage, a random shader
-over the music). The tracker spec
+CloudFront), and the `/fun` rooms: old `/fun#…` links must land in the right room, every shader in
+`src/shaders/` must compile and paint, the stage's editor must survive a failed compile, the Mod Music
+File Museum must load, play, pause, seek, advance, and report a failed download, and on `/fun/music`
+the museum and the stage must start each other. Specs that click a stage opener first wait for the
+island to hydrate (`waitForStage` in `e2e/helpers.ts`). The tracker spec
 answers The Mod Archive's download URL with a module it builds in memory, so it never touches
 the network. Headless Chromium renders WebGL2 in software, so the gallery test takes about a minute.
 Run one file with `npx playwright test e2e/contact.spec.ts`, or debug with `--ui`.
@@ -45,22 +48,23 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
 
 ## Content
 
-- **Fun** (`/fun`) — the non-work page, linked from the nav. Two tabs, Mod Music File Museum
-  (default) and Shader Collection; the hash names the open tab (`/fun#shaders`) and a shader's
-  own link (`/fun#tunnel`) opens the collection. A third tab, Games, is built but empty and
-  only rendered when `FUN_GAMES=on` is set at build time.
-- **Fun → Mod Music File Museum** — a player for classic tracker modules (MOD, S3M, XM, IT, and the
+- **Fun** (`/fun`) — the non-work section, linked from the nav: an overview page with the
+  galleries and playlists, and one page per room, `/fun/music` and `/fun/shaders`, joined by a
+  tab-style sub-nav (`src/components/FunNav.astro`). The rooms used to be tabs on `/fun`, so an
+  inline script there sends `/fun#museum`, `/fun#shaders`, and `/fun#<shader id>` to the page
+  that has them now. The fun pages use the Layout's `wide` option (`--container-wide`, 90rem).
+  A Games room is listed but empty, and only when `FUN_GAMES=on` is set at build time.
+- **Fun → Mod Music File Museum** (`/fun/music`) — a player for classic tracker modules (MOD, S3M, XM, IT, and the
   other formats libopenmpt reads) with a live display: elapsed and remaining time, order /
   pattern / row, speed, tempo and channel count, the song's order list, an LED level meter with
   peak hold per channel, and the pattern scrolling under a fixed playhead. The exhibits run left
   to right along a film-strip reel above the player: drag or scroll it, and the gate in the
   middle names the year and era of the frame under it; the chosen frame is centred in the gate
-  and carries a progress bar while it plays. The volume setting is kept in `localStorage`. The
-  page uses the Layout's `wide` option (`--container-wide`, 90rem). Exhibits live in
-  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id);
-  the one exhibit marked `opens` is where the reel is set when the page loads. Each exhibit
-  needs evidence of stature: a top-three party placing, a place on The Mod Archive's charts,
-  a landmark demo or game soundtrack, or a landmark in the format's history.
+  and carries a progress bar while it plays. The volume setting is kept in `localStorage`.
+  Exhibits live in `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod
+  Archive module id); the one exhibit marked `opens` is where the reel is set when the page
+  loads. Each exhibit needs evidence of stature: a top-three party placing, a place on The Mod
+  Archive's charts, a landmark demo or game soundtrack, or a landmark in the format's history.
   No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
   and nothing is requested before that. Until Play is pressed, choosing an exhibit or using
   Prev / Next only changes the placard. Playback is libopenmpt compiled to WebAssembly (from
@@ -74,20 +78,24 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   old postal address, phone number, e-mail address, or strong language. To add an exhibit,
   confirm composer and year against a second source, read its sample text, and insert it by
   era, then year; `npm test` checks the ordering and the era ranges. The transport's Random
-  shader button opens the shader stage over the music, and the stage's `M` key asks the museum
-  for a random module (a `tracker:random` event on `document`), so either room can start the other.
-- **Fun → Shader Collection** — GLSL fragment shaders in `src/shaders/*.frag`, run by
-  `src/lib/shader-runtime.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
+  shader button opens the shader stage over the music, and on this page the stage's `M` key asks
+  the museum for a random module (a `tracker:random` event on `document`). `/fun/shaders` has no
+  museum, so its stage has no Mod control.
+- **Fun → Shader Collection** (`/fun/shaders`) — GLSL fragment shaders in `src/shaders/*.frag`,
+  drawn by `src/lib/shader-engine.ts` (WebGL2, Shadertoy-style `mainImage` + `iResolution` /
   `iTime` / `iMouse`). One shared offscreen GL context renders every visible tile into
   its own 2D canvas, so the page can hold dozens of shaders without hitting the browser's
-  context cap; tiles pause offscreen and under `prefers-reduced-motion`. Every tile has a
+  context cap; tiles pause offscreen and under `prefers-reduced-motion`. `src/lib/shader-runtime.ts`
+  binds the static tiles and the page background to the engine. Every tile has a
   Fullscreen button and the section has "Random shader" and "Shader of the day" (changes each
-  UTC day) — all open a fullscreen stage. Stage keys: `←` `→` browse, `R` random, `M` random mod,
+  UTC day) — all open the fullscreen stage, `src/components/ShaderStage.tsx`, a React island on
+  both rooms. On `/fun/music`, where there is no grid, the stage loads the shader sources once
+  the page has loaded. Stage keys: `←` `→` browse, `R` random, `M` random mod (on `/fun/music`),
   `T` tour (a new shader every 20 seconds), `E` edit, `S` save a PNG, `C` copy link, `Space` pause,
   `Esc` close.
   The editor recompiles the open shader as its GLSL changes and keeps the last good program
   running when a compile fails; edits last until the page reloads. Every shader has a link,
-  `/fun#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
+  `/fun/shaders#<id>`, that opens it on the stage. The filter chips narrow the grid by `kind`, and the
   stage browses only what the filter shows. Register new shaders in `src/config/shaders.ts`
   with an `id`, a `kind`, a title, and a caption.
   Every page also draws one shader as a dimmed full-page backdrop — the `background` prop
@@ -102,23 +110,25 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   the list.
 
 - **Feed** (`/feed`) — videos, links, and images shared from the phone's share sheet. Posts
-  are not in the repo: they live in DynamoDB and the page loads them from `/api/feed` in the
-  browser, so a share appears without a deploy. See [Share feed](#share-feed).
+  are not in the repo: they live in DynamoDB and `src/components/Feed.tsx` loads them from
+  `/api/feed` in the browser, so a share appears without a deploy. See [Share feed](#share-feed).
 
 ## Layout
 
 ```
 src/
-  pages/        index, resume, fun, links (+ feeds), feed, legal, 404
-  components/   Header, Footer, Section, TrackerMuseum
+  pages/        index, resume, fun/ (index, music, shaders), links (+ feeds), feed, legal, 404
+  components/   Header, Footer, Section, FunNav, TrackerMuseum (.astro);
+                Feed, ShaderStage (.tsx, React islands)
   layouts/      Layout.astro
   config/       site.ts — name, nav, external links, playlists; shaders.ts; tracker-museum.ts
-  lib/          opml.ts, feed.ts, fun.ts, slug.ts, shader-runtime.ts, tracker-museum.ts,
-                tracker-player.ts, tracker.worklet.ts (+ node:test files)
+  lib/          opml.ts, feed.ts, fun.ts, slug.ts, shader-engine.ts, shader-runtime.ts,
+                shader-filter.ts, tracker-museum.ts, tracker-player.ts, tracker.worklet.ts
+                (+ node:test files)
   shaders/      *.frag fragment shader bodies
   assets/       memes/, cats/ (processed by astro:assets)
   styles/       global.css (Tailwind 4 tokens + component classes)
-e2e/            Playwright specs (pages, contact form, shader gallery, mod music file museum + tabs)
+e2e/            Playwright specs (pages, contact form, feed, shader gallery + stage, mod music file museum + rooms)
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
