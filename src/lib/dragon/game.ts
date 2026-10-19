@@ -146,7 +146,7 @@ const HUD = /* html */ `
   <div class="dragon-score"><strong data-razed>0</strong>razed of <b data-total>0</b><span data-ablaze></span></div>
   <div class="dragon-health" data-health role="meter" aria-label="Dragon health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span></span></div>
   <div class="dragon-hurt" data-hurt></div>
-  <div class="dragon-title" data-title><h2 data-heading>Here be dragons</h2><p data-subtitle>The realm is yours to burn</p></div>
+  <div class="dragon-title" data-title><h2 data-heading></h2><p data-subtitle></p></div>
   <p class="dragon-keys" data-keys></p>
   <button class="dragon-button dragon-bomb" type="button" data-bomb hidden>Bomb</button>
   <button class="dragon-button dragon-fire" type="button" data-fire hidden>Fire</button>
@@ -576,7 +576,6 @@ class Game {
     if (total) total.textContent = String(world.city.scoredCount);
     this.showHealth();
     this.stage.querySelector('[data-hud]')?.setAttribute('data-on', '');
-    this.stage.querySelector('[data-title]')?.setAttribute('data-on', '');
     window.setTimeout(() => this.stage.querySelector('[data-keys]')?.setAttribute('data-off', ''), 14_000);
   }
 
@@ -745,10 +744,7 @@ class Game {
     this.stage.dataset.phase = 'arrive';
     this.stage.querySelector('[data-fade]')?.removeAttribute('data-on');
     this.stage.querySelector('[data-flash]')?.removeAttribute('data-on');
-    const heading = this.stage.querySelector('[data-heading]');
-    const subtitle = this.stage.querySelector('[data-subtitle]');
-    if (heading) heading.textContent = 'Here be dragons';
-    if (subtitle) subtitle.textContent = 'The realm is yours to burn';
+    this.stage.querySelector('[data-title]')?.removeAttribute('data-on');
   }
 
   private approach(kind: BuildingKind, distance: number): boolean {
@@ -915,10 +911,12 @@ class Game {
     this.stage.dataset.burning = String(city.burning.size);
     this.burningCount = city.burning.size;
     if (city.razed === city.scoredCount) {
+      const heading = this.stage.querySelector('[data-heading]');
       const subtitle = this.stage.querySelector('[data-subtitle]');
       const title = this.stage.querySelector<HTMLElement>('[data-title]');
-      if (subtitle && title && subtitle.textContent !== 'The realm is ash') {
-        subtitle.textContent = 'The realm is ash';
+      if (heading && subtitle && title && heading.textContent !== 'The realm is ash') {
+        heading.textContent = 'The realm is ash';
+        subtitle.textContent = 'Every town has burned';
         title.removeAttribute('data-on');
         void title.offsetWidth;
         title.setAttribute('data-on', '');
