@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FunNav from '../../components/FunNav.astro';
+import ShaderStage from '../../components/ShaderStage';
+import TrackerMuseum from '../../components/TrackerMuseum.astro';
+import { shaders } from '../../config/shaders';
+import { exhibits } from '../../config/tracker-museum';
+
+const stageShaders = shaders.map(({ id, title, caption }) => ({ id, title, caption }));
+const shaderIds = shaders.map((shader) => shader.id);
+---
+
+<Layout
+  wide
+  background="lissajous"
+  heading="Fun"
+  description={`A museum of ${exhibits.length} classic tracker modules played live in the browser with a scrolling pattern display, and ${shaders.length} GLSL fragment shaders drafted with generative AI, running in WebGL2.`}
+>
+  <script is:inline define:vars={{ shaderIds }}>
+    // /fun once held both rooms as tabs, and the stage's Link button copied /fun#<shader> links.
+    const forward = () => {
+      const hash = location.hash.slice(1);
+      if (hash === 'shaders') location.replace('/fun/shaders');
+      else if (shaderIds.includes(hash)) location.replace(`/fun/shaders#${hash}`);
+    };
+    forward();
+    addEventListener('hashchange', forward);
+  </script>
+
+  <FunNav />
+  <div class="fun-panel">
+    <TrackerMuseum />
+  </div>
+  <ShaderStage client:load shaders={stageShaders} music />
+</Layout>

@@ -1,0 +1,198 @@
+---
+/**
+ * The Mod Music File Museum on /fun: a film-strip timeline of the exhibits, oldest on the
+ * left, above a module player with a live pattern display. Exhibits come from
+ * src/config/tracker-museum.ts; the placard is rendered here for the one marked `opens` and
+ * src/lib/tracker-museum.ts rewrites it as pieces change. The Random shader button is handled
+ * by src/components/ShaderStage.tsx like any [data-random-shader].
+ */
+import Section from './Section.astro';
+import { credit, eras, exhibits, openingExhibit, pageUrl, yearLabel } from '../config/tracker-museum';
+
+const oldest = exhibits[0];
+const newest = exhibits.at(-1);
+if (!oldest || !newest) throw new Error('The Mod Music File Museum needs at least one exhibit');
+
+const opening = openingExhibit();
+const openingEra = eras.find((era) => era.id === opening.era);
+if (!openingEra) throw new Error(`Exhibit "${opening.title}" names an era that is not in eras`);
+const openingNumber = String(exhibits.indexOf(opening) + 1).padStart(2, '0');
+
+/** Each frame of the film strip, with the edge print it carries: an era title where a new era starts, a year where the year changes. */
+const frames = exhibits.map((exhibit, index) => {
+  const previous = exhibits[index - 1];
+  const era = eras.find((candidate) => candidate.id === exhibit.era);
+  if (!era) throw new Error(`Exhibit "${exhibit.title}" names an era that is not in eras`);
+  return {
+    exhibit,
+    number: String(index + 1).padStart(2, '0'),
+    era,
+    opensEra: previous?.era !== exhibit.era,
+    opensYear: previous?.year !== exhibit.year,
+  };
+});
+
+/** Pattern rows on screen. Odd, so the row being played sits in the middle. */
+const PATTERN_ROWS = 17;
+/** Empty order-list cells shown before a file loads. */
+const IDLE_ORDERS = 24;
+---
+
+<Section title="Mod Music File Museum">
+  <div class="grid gap-x-12 gap-y-3 lg:grid-cols-[minmax(0,38rem)_minmax(0,1fr)]">
+    <p class="text-muted">
+      A tracker module is the score, not the recording: a handful of short samples and a grid of notes, small enough
+      for a floppy disk, performed live by the machine. The Amiga and PC demoscenes shipped music this way for a
+      decade before MP3. These {exhibits.length} pieces run from {oldest.year} to {newest.year} and play here the same
+      way: libopenmpt, compiled to WebAssembly, performs every row in your browser while the pattern scrolls past.
+    </p>
+    <p class="max-w-[34rem] self-end text-small text-muted">
+      Drag or scroll the reel to travel through the years and pick a frame to load it. Random shader opens one of the
+      shaders fullscreen while the music keeps playing. Each piece is the work of its composer; the files stream
+      from <a href="https://modarchive.org/" target="_blank" rel="noopener noreferrer">The Mod Archive</a> when you
+      press play, and none are hosted here.
+    </p>
+  </div>
+
+  <div class="mt-8" data-tracker>
+    <div class="reel">
+      <ol class="reel__film" aria-label="Exhibits, oldest first" data-tracker-list>
+        {
+          frames.map(({ exhibit, number, era, opensEra, opensYear }) => (
+            <li class="reel__slot" data-era={era.id} data-opens-era={opensEra || undefined}>
+              <span class="reel__edge reel__edge--top" aria-hidden="true">
+                <span>{number}A</span>
+                {opensEra && <span class="reel__era">{era.title}</span>}
+              </span>
+              <button
+                type="button"
+                class="reel-frame"
+                data-tracker-exhibit={exhibit.modarchiveId}
+                data-frame-year={yearLabel(exhibit)}
+                data-era-title={era.title}
+                aria-current={exhibit === opening ? 'true' : undefined}
+                tabindex={exhibit === opening ? 0 : -1}
+              >
+                <span class="reel-frame__year">{yearLabel(exhibit)}</span>
+                <span class="reel-frame__title">{exhibit.title}</span>
+                <span class="reel-frame__credit">{credit(exhibit)}</span>
+                <span class="reel-frame__format">{exhibit.format}</span>
+                <span class="reel-frame__progress" aria-hidden="true">
+                  <i />
+                </span>
+              </button>
+              <span class="reel__edge reel__edge--bottom" aria-hidden="true" data-opens-year={opensYear || undefined}>
+                {opensYear && <span>{exhibit.year}</span>}
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+      <div class="reel__gate" aria-hidden="true">
+        <span class="reel__readout">
+          <span class="reel__readout-year" data-tracker-dial-year>{yearLabel(opening)}</span>
+          <span class="reel__readout-era" data-tracker-dial-era>{openingEra.title}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="deck">
+      <article class="deck__placard">
+        <p class="label" data-tracker-field="era">{yearLabel(opening)} · {openingEra.title}</p>
+        <h3 class="mt-3 font-display text-h2 font-bold uppercase tracking-[0.01em]" data-tracker-field="title">
+          {opening.title}
+        </h3>
+        <p class="mt-2 font-semibold" data-tracker-field="credit">{credit(opening)}</p>
+        <p class="label mt-2" data-tracker-field="origin">{opening.origin}</p>
+        <p class="mt-4 text-small text-muted" data-tracker-field="blurb">{opening.blurb}</p>
+        <p class="mt-4 flex flex-wrap gap-2" data-tracker-field="file"><span class="chip">{opening.format}</span></p>
+        <p class="label mt-4">
+          <a class="hover:text-text" href={pageUrl(opening)} target="_blank" rel="noopener noreferrer" data-tracker-source>
+            This module on The Mod Archive <span aria-hidden="true">↗</span>
+          </a>
+        </p>
+        <details class="mt-5 border-t border-rule pt-4" hidden data-tracker-notes>
+          <summary class="label cursor-pointer hover:text-text">Sample names, where composers signed their work</summary>
+          <pre
+            class="mt-3 max-h-[22rem] overflow-auto font-mono text-[0.78rem] leading-[1.5] text-muted"
+            data-tracker-samples></pre>
+        </details>
+      </article>
+
+      <div class="deck__console">
+        <div class="console-transport">
+          <div class="console-lcd">
+            <p class="console-lcd__index" data-tracker-index>Exhibit {openingNumber} of {exhibits.length}</p>
+            <p class="console-lcd__time" data-tracker-time>0:00 / 0:00</p>
+            <p class="console-lcd__remaining" data-tracker-remaining>&nbsp;</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="button min-w-[6.5rem] justify-center" data-tracker-toggle>Play</button>
+            <button type="button" class="button button--ghost" data-tracker-step="-1" aria-label="Previous exhibit">
+              Prev
+            </button>
+            <button type="button" class="button button--ghost" data-tracker-step="1" aria-label="Next exhibit">
+              Next
+            </button>
+            <button type="button" class="button button--ghost" data-random-shader>Random shader</button>
+          </div>
+          <div class="console-sliders">
+            <input
+              type="range"
+              class="tracker-seek"
+              min="0"
+              max="1"
+              step="any"
+              value="0"
+              disabled
+              aria-label="Position in the piece"
+              data-tracker-seek
+            />
+            <label class="console-volume">
+              <span class="label">Volume</span>
+              <input type="range" class="tracker-seek" min="0" max="1" step="0.01" value="0.8" data-tracker-volume />
+            </label>
+          </div>
+          <p class="text-small text-muted" role="status" data-tracker-status>Nothing downloads until you press play.</p>
+        </div>
+
+        <dl class="tracker-readout">
+          <div><dt>Order</dt><dd data-tracker-live="order">--</dd></div>
+          <div><dt>Pattern</dt><dd data-tracker-live="pattern">--</dd></div>
+          <div><dt>Row</dt><dd data-tracker-live="row">--</dd></div>
+          <div><dt>Speed</dt><dd data-tracker-live="speed">--</dd></div>
+          <div><dt>BPM</dt><dd data-tracker-live="tempo">--</dd></div>
+          <div><dt>Channels</dt><dd data-tracker-live="channels">--</dd></div>
+        </dl>
+
+        <div class="console-orders">
+          <p class="label">Song order</p>
+          <ol class="tracker-orders" aria-label="Order list: the sequence of patterns that makes up the song" data-tracker-orders>
+            {Array.from({ length: IDLE_ORDERS }, () => <li>--</li>)}
+          </ol>
+        </div>
+
+        <div class="console-pattern">
+          <div
+            class="tracker-pattern"
+            role="img"
+            tabindex="0"
+            aria-label="The pattern being played: one column of notes per channel, scrolling with the music"
+            data-tracker-pattern
+          >
+            <pre data-tracker-head> </pre>
+            <div class="tracker-meters" data-tracker-meters></div>
+            <pre class="tracker-rows" data-tracker-rows>{Array.from({ length: PATTERN_ROWS }, (_, index) => <span data-current={index === (PATTERN_ROWS - 1) / 2 || undefined} />)}</pre>
+          </div>
+          <p class="text-small text-muted" hidden data-tracker-still>
+            The scrolling pattern and level meters are off because your system asks for reduced motion.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</Section>
+
+<script>
+  import '../lib/tracker-museum';
+</script>

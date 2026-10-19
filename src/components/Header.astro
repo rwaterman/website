@@ -1,4 +1,5 @@
 ---
+import DragonTag from './DragonTag.astro';
 import { site, nav } from '../config/site';
 import { shaders } from '../config/shaders';
 
@@ -12,8 +13,12 @@ const backgroundShader = background ? shaders.find((shader) => shader.id === bac
 if (background && !backgroundShader) throw new Error(`Unknown background shader "${background}"`);
 
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
-const isCurrent = (href: string) =>
-  !href.startsWith('http') && (href.replace(/\/$/, '') || '/') === current;
+// A section's own pages count as it: /fun/shaders marks Fun.
+const isCurrent = (href: string): boolean => {
+  if (href.startsWith('http')) return false;
+  const path = href.replace(/\/$/, '') || '/';
+  return path === current || (path !== '/' && current.startsWith(`${path}/`));
+};
 ---
 
 <header class="border-b border-rule bg-bg/85">
@@ -44,6 +49,7 @@ const isCurrent = (href: string) =>
       </svg>
       <span class="font-display text-[1.35rem] font-bold uppercase leading-none tracking-[0.02em]">{site.name}</span>
     </a>
+    {__DRAGON_ENABLED__ && <DragonTag />}
 
     <nav class="col-span-2 min-w-0 lg:col-auto lg:ml-auto" aria-label="Primary">
       <ul

@@ -1,0 +1,210 @@
+---
+// Easter egg: a dragon in the header that stays invisible until the pointer finds it (or keyboard
+// focus lands on it). Revealed, its jaw works and it breathes a stream of claw-mark runes; a click
+// wakes the dragon exactly as the footer glyph does (src/lib/dragon/egg.ts). The runes are an
+// invented script, not a real alphabet. Rendered only when __DRAGON_ENABLED__ is true; see
+// astro.config.mjs. Devices without hover never get it, so an invisible tap target cannot start
+// the game by accident.
+
+/** Claw-mark runes, each drawn in a 10 × 14 box. */
+const runes = [
+  'M2 1 L8 13 M8 1 L3 7',
+  'M5 1 L5 13 M1 4 L9 4 M2 13 L8 10',
+  'M1 1 L9 1 L5 7 L9 13 M1 13 L4 9',
+  'M1 2 L5 6 L9 2 M5 6 L5 13 M2 13 L8 10',
+  'M1 1 L4 13 M5 1 L8 13 M9 5 L1 9',
+  'M2 2 L8 6 L2 10 L8 13 M5 1 L5 4',
+];
+---
+
+<button type="button" class="dragon-tag" data-dragon-tag aria-label="Wake the dragon">
+  <svg viewBox="0 0 132 24" aria-hidden="true">
+    <g class="dragon-tag-runes">
+      {
+        runes.map((rune, index) => (
+          <g class="dragon-tag-rune" style={`--rune: ${index}`}>
+            <path d={rune} pathLength="1" />
+          </g>
+        ))
+      }
+    </g>
+    <g class="dragon-tag-head">
+      <path
+        class="dragon-tag-skull"
+        d="M0 15 L2 11 L0 9 L3 8.5 L1 3 L6.5 7 L8 0.5 L11 6 C13.5 5 17 5.2 19.5 6.4 L25 8.4 L28 10.2 L27.6 11.6 L24 11.8 L23 12.9 L22 11.9 L20 13 L19 12 L17 13 L16 12.1 L14 12.3 L11 14 L4 15.5 Z"
+      />
+      <path
+        class="dragon-tag-jaw"
+        d="M8 14.4 L12.5 13 L14 13.9 L15 12.9 L17 13.9 L18 12.9 L20 13.8 L21 12.9 L23 13.6 L25.5 12.9 L27 13.8 C22 17.2 14 18 8 16.3 Z"
+      />
+      <ellipse class="dragon-tag-eye" cx="15.6" cy="8.1" rx="1.5" ry="0.75" transform="rotate(-14 15.6 8.1)" />
+      <circle class="dragon-tag-nostril" cx="25.2" cy="9.4" r="0.55" />
+      <ellipse class="dragon-tag-breath" cx="30" cy="13" rx="2.6" ry="1.5" />
+    </g>
+  </svg>
+</button>
+
+<script>
+  import '../lib/dragon/egg';
+</script>
+
+<style>
+  .dragon-tag {
+    display: inline-grid;
+    place-items: center;
+    width: 8.25rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .dragon-tag svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .dragon-tag:hover,
+  .dragon-tag:focus-visible {
+    opacity: 1;
+  }
+
+  /* Every part animates only while the dragon is showing. */
+  .dragon-tag :is(.dragon-tag-rune, .dragon-tag-rune path, .dragon-tag-jaw, .dragon-tag-eye, .dragon-tag-breath) {
+    animation-play-state: paused;
+  }
+
+  .dragon-tag:is(:hover, :focus-visible) :is(.dragon-tag-rune, .dragon-tag-rune path, .dragon-tag-jaw, .dragon-tag-eye, .dragon-tag-breath) {
+    animation-play-state: running;
+  }
+
+  .dragon-tag-skull,
+  .dragon-tag-jaw {
+    fill: currentColor;
+  }
+
+  .dragon-tag-jaw {
+    transform-box: view-box;
+    transform-origin: 9px 14.4px;
+    animation: dragon-tag-jaw 0.6s ease-in-out infinite;
+  }
+
+  .dragon-tag-nostril {
+    fill: var(--color-bg);
+  }
+
+  .dragon-tag-eye {
+    fill: #ffd27a;
+    animation: dragon-tag-eye 1.8s ease-in-out infinite;
+  }
+
+  .dragon-tag-breath {
+    fill: #ffb44a;
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: dragon-tag-breath 0.6s ease-in-out infinite;
+  }
+
+  /* Runes leave the mouth one after another, draw themselves, glow, and drift off to the right. */
+  .dragon-tag-rune {
+    transform-box: view-box;
+    transform: translate(30px, 5px);
+    opacity: 0;
+    animation: dragon-tag-flow 3s linear infinite;
+    animation-delay: calc(var(--rune) * -0.5s);
+  }
+
+  .dragon-tag-rune path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    filter: drop-shadow(0 0 1.5px var(--color-accent));
+    animation: dragon-tag-draw 3s linear infinite;
+    animation-delay: calc(var(--rune) * -0.5s);
+  }
+
+  @keyframes dragon-tag-jaw {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(16deg);
+    }
+  }
+
+  @keyframes dragon-tag-eye {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes dragon-tag-breath {
+    0%,
+    100% {
+      opacity: 0.2;
+      transform: scaleX(0.4);
+    }
+    50% {
+      opacity: 0.95;
+      transform: scaleX(1.3);
+    }
+  }
+
+  @keyframes dragon-tag-flow {
+    0% {
+      opacity: 0;
+      transform: translate(30px, 5px) scale(0.5);
+    }
+    12% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(122px, 5px) scale(1);
+    }
+  }
+
+  @keyframes dragon-tag-draw {
+    0% {
+      stroke-dashoffset: 1;
+    }
+    25%,
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Without motion, the dragon holds still with a finished line of runes in front of it. */
+  @media (prefers-reduced-motion: reduce) {
+    .dragon-tag-rune {
+      opacity: 1;
+      transform: translate(calc(34px + var(--rune) * 15px), 5px);
+    }
+
+    .dragon-tag-rune path {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @media (hover: none) {
+    .dragon-tag {
+      display: none;
+    }
+  }
+</style>
