@@ -92,6 +92,8 @@ function mount(root: HTMLElement): void {
   let gutter = 2;
   let paintedRow = '';
   let seeking = false;
+  /** A seek while paused is answered with one position report, which the readout should show. */
+  let seekPending = false;
   let frame = 0;
 
   const setState = (next: State, message: string): void => {
@@ -242,6 +244,9 @@ function mount(root: HTMLElement): void {
       setState('playing', 'Playing.');
     },
     onPosition(next) {
+      // Reports the worklet sent before a pause can arrive after it; a held position stays held.
+      if (state !== 'playing' && !seekPending) return;
+      seekPending = false;
       position = next;
       frame ||= requestAnimationFrame(paint);
     },
@@ -298,6 +303,7 @@ function mount(root: HTMLElement): void {
   });
   seek.addEventListener('change', () => {
     seeking = false;
+    seekPending = true;
     void player.seek(Number(seek.value));
   });
   document.addEventListener('tracker:random', () => {
