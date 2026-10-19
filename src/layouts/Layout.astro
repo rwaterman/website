@@ -15,9 +15,11 @@ interface Props {
   background?: string;
   /** Tighter vertical rhythm so a short page fits one fullscreen viewport. */
   compact?: boolean;
+  /** Widens the header, page, and footer to --container-wide for pages that need the room. */
+  wide?: boolean;
 }
 
-const { title, description = site.description, heading, eyebrow, lede, background, compact = false } = Astro.props;
+const { title, description = site.description, heading, eyebrow, lede, background, compact = false, wide = false } = Astro.props;
 const pageTitle = title ?? heading;
 const documentTitle = pageTitle ? `${pageTitle} · ${site.name}` : site.name;
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
@@ -59,7 +61,7 @@ const ogImage = Astro.site ? new URL('/og.png', Astro.site).href : undefined;
     }
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
   </head>
-  <body class="flex min-h-[100dvh] flex-col antialiased">
+  <body class="flex min-h-[100dvh] flex-col antialiased" data-wide={wide || undefined}>
     <Header background={background} />
     <main
       class:list={['container-site flex-auto', compact ? 'py-[clamp(2rem,3.5vw,3rem)]' : 'py-[clamp(2.5rem,6vw,5.5rem)]']}

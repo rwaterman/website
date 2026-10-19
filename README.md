@@ -52,12 +52,19 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   galleries and playlists, and one page per room, `/fun/music` and `/fun/shaders`, joined by a
   tab-style sub-nav (`src/components/FunNav.astro`). The rooms used to be tabs on `/fun`, so an
   inline script there sends `/fun#museum`, `/fun#shaders`, and `/fun#<shader id>` to the page
-  that has them now. A Games room is listed but empty, and only when `FUN_GAMES=on` is set at
-  build time.
+  that has them now. The fun pages use the Layout's `wide` option (`--container-wide`, 90rem).
+  A Games room is listed but empty, and only when `FUN_GAMES=on` is set at build time.
 - **Fun → Mod Music File Museum** (`/fun/music`) — a player for classic tracker modules (MOD, S3M, XM, IT, and the
-  other formats libopenmpt reads) with a live display: order / pattern / row, speed and tempo,
-  a level meter per channel, and the pattern scrolling under a fixed playhead. Exhibits live in
-  `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod Archive module id).
+  other formats libopenmpt reads) with a live display: elapsed and remaining time, order /
+  pattern / row, speed, tempo and channel count, the song's order list, an LED level meter with
+  peak hold per channel, and the pattern scrolling under a fixed playhead. The exhibits run left
+  to right along a film-strip reel above the player: drag or scroll it, and the gate in the
+  middle names the year and era of the frame under it; the chosen frame is centred in the gate
+  and carries a progress bar while it plays. The volume setting is kept in `localStorage`.
+  Exhibits live in `src/config/tracker-museum.ts` (composer, group, year, origin, and a Mod
+  Archive module id); the one exhibit marked `opens` is where the reel is set when the page
+  loads. Each exhibit needs evidence of stature: a top-three party placing, a place on The Mod
+  Archive's charts, a landmark demo or game soundtrack, or a landmark in the format's history.
   No module file is in this repo: pressing Play fetches the piece from `api.modarchive.org`,
   and nothing is requested before that. Until Play is pressed, choosing an exhibit or using
   Prev / Next only changes the placard. Playback is libopenmpt compiled to WebAssembly (from
@@ -65,8 +72,8 @@ browser. Only the legal page's "Last updated" date is set by hand, when its text
   Vite bundles on its own (`worker.format: 'es'` in `astro.config.mjs` is there for it).
   `src/lib/tracker-player.ts` is the page-side handle and `src/lib/tracker-museum.ts` paints
   the display. When a piece ends the next exhibit starts. Under `prefers-reduced-motion` the
-  meters and the scrolling pattern stay off and the numeric readout still runs. A panel under
-  the pattern lists the file's sample names, where composers left signatures and greetings;
+  meters and the scrolling pattern stay off and the numeric readout still runs. A panel on the
+  placard lists the file's sample names, where composers left signatures and greetings;
   `withholdSampleText` on an exhibit keeps it off the page for files whose text carries an
   old postal address, phone number, e-mail address, or strong language. To add an exhibit,
   confirm composer and year against a second source, read its sample text, and insert it by
