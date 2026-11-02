@@ -22,12 +22,12 @@ permissions:
   contents: read
 
 env:
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: us-west-2
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.env || (github.ref_name == 'main' && 'prod' || 'dev') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -62,10 +62,17 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            infra/package-lock.json
 
       - run: npm ci
+
+      - name: Install infra dependencies
+        working-directory: infra
+        run: npm ci
 
       - name: Type-check
         run: npm run check
@@ -85,7 +92,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/website-content-${{ steps.target.outputs.name }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/website-content-${{ steps.target.outputs.name }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Resolve deploy targets
