@@ -13,35 +13,35 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { HOSTED_ZONE_ID, ZONE_NAME, GITHUB_REPO, SiteEnv } from './site-config';
-import { Feed } from './feed';
+import { GITHUB_REPO, WEB_ACL_ARN_PARAMETER, type StageConfig } from './site-config.ts';
+import { Feed } from './feed.ts';
+import { importGitHubOidcProvider } from './oidc.ts';
 
 export interface SiteStackProps extends cdk.StackProps {
-  site: SiteEnv;
-  oidcProvider: iam.IOpenIdConnectProvider;
-  /** ARN of the shared account-wide CloudFront WebACL, owned by EdgeStack. */
-  webAclArn: string;
+  stage: StageConfig;
   certificate: acm.ICertificate;
+  /** When false, the distribution gets its certificate but no aliases and no DNS records. */
+  attachDomains: boolean;
 }
 
 /**
- * One static-site environment: private S3 bucket behind a CloudFront distribution
+ * One static-site stage: private S3 bucket behind a CloudFront distribution
  * (Origin Access Control), Route53 alias records, a directory-index CloudFront Function,
- * and a branch-scoped OIDC role for content deploys.
+ * and a GitHub-environment-scoped OIDC role for content deploys.
  */
 export class SiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
-    const { site, oidcProvider, webAclArn, certificate } = props;
-    const isProd = site.envName === 'prod';
-    const wwwDomain = `www.${ZONE_NAME}`;
+    const { stage, certificate, attachDomains } = props;
+    const isProd = stage.envName === 'prod';
+    const wwwDomain = `www.${stage.zoneName}`;
 
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
-      hostedZoneId: HOSTED_ZONE_ID,
-      zoneName: ZONE_NAME,
+      hostedZoneId: stage.hostedZoneId,
+      zoneName: stage.zoneName,
     });
 
-    const domainNames = site.includeWww ? [site.domainName, wwwDomain] : [site.domainName];
+    const domainNames = stage.includeWww ? [stage.domainName, wwwDomain] : [stage.domainName];
 
     const bucket = new s3.Bucket(this, 'SiteBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -53,19 +53,19 @@ export class SiteStack extends cdk.Stack {
 
     const rewriteFunction = new cloudfront.Function(this, 'RewriteFunction', {
       runtime: cloudfront.FunctionRuntime.JS_2_0,
-      code: cloudfront.FunctionCode.fromInline(buildFunctionCode(site.includeWww, ZONE_NAME)),
+      code: cloudfront.FunctionCode.fromInline(buildFunctionCode(stage.includeWww, stage.zoneName)),
     });
 
     // Contact form (Lambda + HTTP API + DynamoDB rate-limiter). Parked behind a per-env
     // flag: the code stays in the repo but nothing deploys until enableContactForm is set.
     // Functional prerequisites when enabling: the SecureString SSM parameter
-    // `/website/<env>/contact-recipient`, the SES domain identity from SharedStack (sender),
+    // `/website/<env>/contact-recipient`, the SES domain identity from the account baseline (sender),
     // and — while the account is in the SES sandbox — the recipient address itself verified
     // as an SES identity in this stack's region.
     let contactApi: apigwv2.HttpApi | undefined;
     let contactRecipientParameterName: string | undefined;
-    if (site.enableContactForm) {
-      contactRecipientParameterName = `/website/${site.envName}/contact-recipient`;
+    if (stage.enableContactForm) {
+      contactRecipientParameterName = `/website/${stage.envName}/contact-recipient`;
       const contactRateLimitTable = new dynamodb.Table(this, 'ContactRateLimitTable', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
         billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -85,8 +85,8 @@ export class SiteStack extends cdk.Stack {
         timeout: cdk.Duration.seconds(10),
         logGroup: contactLogGroup,
         environment: {
-          ALLOWED_ORIGIN: `https://${site.domainName}`,
-          SENDER_ADDRESS: `contact@${ZONE_NAME}`,
+          ALLOWED_ORIGIN: `https://${stage.domainName}`,
+          SENDER_ADDRESS: `contact@${stage.zoneName}`,
           RECIPIENT_PARAMETER_NAME: contactRecipientParameterName,
           RATE_LIMIT_TABLE_NAME: contactRateLimitTable.tableName,
           // One-minute fixed window. Per-IP and per-reply-to caps bound a single sender
@@ -113,8 +113,8 @@ export class SiteStack extends cdk.Stack {
       );
 
       contactApi = new apigwv2.HttpApi(this, 'ContactApi', {
-        apiName: `website-contact-${site.envName}`,
-        description: `Contact form endpoint for ${site.domainName}`,
+        apiName: `website-contact-${stage.envName}`,
+        description: `Contact form endpoint for ${stage.domainName}`,
         createDefaultStage: false,
       });
       contactApi.addRoutes({
@@ -146,7 +146,7 @@ export class SiteStack extends cdk.Stack {
       };
     }
 
-    const feed = site.enableFeed ? new Feed(this, 'Feed', { site }) : undefined;
+    const feed = stage.enableFeed ? new Feed(this, 'Feed', { site: stage }) : undefined;
     if (feed) {
       additionalBehaviors['api/feed*'] = {
         origin: new origins.HttpOrigin(`${feed.api.apiId}.execute-api.${this.region}.amazonaws.com`, {
@@ -168,9 +168,11 @@ export class SiteStack extends cdk.Stack {
     }
 
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
-      domainNames,
+      domainNames: attachDomains ? domainNames : undefined,
       certificate,
-      webAclId: webAclArn,
+      webAclId: stage.webAcl
+        ? ssm.StringParameter.valueForStringParameter(this, WEB_ACL_ARN_PARAMETER)
+        : undefined,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       defaultBehavior: {
@@ -190,23 +192,25 @@ export class SiteStack extends cdk.Stack {
       ],
     });
 
-    const aliasTarget = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution));
-    new route53.ARecord(this, 'AliasA', { zone, recordName: site.domainName, target: aliasTarget });
-    new route53.AaaaRecord(this, 'AliasAAAA', { zone, recordName: site.domainName, target: aliasTarget });
-    if (site.includeWww) {
-      new route53.ARecord(this, 'WwwAliasA', { zone, recordName: wwwDomain, target: aliasTarget });
-      new route53.AaaaRecord(this, 'WwwAliasAAAA', { zone, recordName: wwwDomain, target: aliasTarget });
+    if (attachDomains) {
+      const aliasTarget = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution));
+      new route53.ARecord(this, 'AliasA', { zone, recordName: stage.domainName, target: aliasTarget });
+      new route53.AaaaRecord(this, 'AliasAAAA', { zone, recordName: stage.domainName, target: aliasTarget });
+      if (stage.includeWww) {
+        new route53.ARecord(this, 'WwwAliasA', { zone, recordName: wwwDomain, target: aliasTarget });
+        new route53.AaaaRecord(this, 'WwwAliasAAAA', { zone, recordName: wwwDomain, target: aliasTarget });
+      }
     }
 
-    // Branch-scoped CI role: only this env's branch can assume it, and it can only touch
-    // this env's bucket, distribution, and SSM parameters.
+    // Environment-scoped CI role: only this stage's GitHub environment can assume it, and it
+    // can only touch this stage's bucket, distribution, and SSM parameters.
     const contentRole = new iam.Role(this, 'ContentDeployRole', {
-      roleName: `website-content-${site.envName}`,
-      description: `GitHub Actions role to deploy ${site.envName} site content`,
-      assumedBy: new iam.OpenIdConnectPrincipal(oidcProvider, {
+      roleName: `website-content-${stage.envName}`,
+      description: `GitHub Actions role to deploy ${stage.envName} site content`,
+      assumedBy: new iam.OpenIdConnectPrincipal(importGitHubOidcProvider(this, stage.account), {
         StringEquals: {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          'token.actions.githubusercontent.com:sub': `repo:${GITHUB_REPO}:ref:refs/heads/${site.branch}`,
+          'token.actions.githubusercontent.com:sub': `repo:${GITHUB_REPO}:environment:${stage.githubEnvironment}`,
         },
       }),
     });
@@ -220,20 +224,20 @@ export class SiteStack extends cdk.Stack {
     contentRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ssm:GetParameter', 'ssm:GetParameters'],
-        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/website/${site.envName}/*`],
+        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/website/${stage.envName}/*`],
       }),
     );
 
     new ssm.StringParameter(this, 'BucketNameParam', {
-      parameterName: `/website/${site.envName}/bucket-name`,
+      parameterName: `/website/${stage.envName}/bucket-name`,
       stringValue: bucket.bucketName,
     });
     new ssm.StringParameter(this, 'DistributionIdParam', {
-      parameterName: `/website/${site.envName}/distribution-id`,
+      parameterName: `/website/${stage.envName}/distribution-id`,
       stringValue: distribution.distributionId,
     });
 
-    new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${site.domainName}` });
+    new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${stage.domainName}` });
     new cdk.CfnOutput(this, 'BucketName', { value: bucket.bucketName });
     new cdk.CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
     new cdk.CfnOutput(this, 'DistributionDomain', { value: distribution.distributionDomainName });

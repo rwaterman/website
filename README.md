@@ -128,14 +128,14 @@ e2e/            Playwright specs (pages, contact form, shader gallery + stage, m
 public/         static assets (resume PDF, feeds.opml, og.png, favicon.svg/.ico, apple-touch-icon.png)
 infra/          AWS CDK app (TypeScript)
   bin/website.ts
-  lib/shared-stack.ts   account-wide singletons (us-west-2)
-  lib/edge-stack.ts     shared WAF (us-east-1)
-  lib/cert-stack.ts     per-env ACM certificate (us-east-1)
-  lib/site-stack.ts     one environment (us-west-2)
+  lib/shared-stack.ts   infra-deploy role (us-west-2)
+  lib/cert-stack.ts     the stage's ACM certificate (us-east-1)
+  lib/site-stack.ts     the stage's site (us-west-2)
   lib/feed.ts           share feed construct, used by site-stack.ts
   lambda/feed/          share feed Lambda (index.mjs handler, post.mjs validation)
   lib/redirect-stack.ts rickgwaterman.com → rickwaterman.com 301 (us-east-1)
-  lib/site-config.ts    SITE_ENVS, account/region/zone
+  lib/site-config.ts    STAGES (account, zone, web ACL flag), resolveStage
+  test/                 stage config and stack assertions (node:test, run by `npm test` in infra/)
 .github/workflows/
   deploy.yml    build + publish content
   infra.yml     cdk deploy
@@ -149,7 +149,7 @@ flowchart LR
   GH -->|cdk deploy| CFN[CloudFormation]
   U[Browser] --> R53[Route53<br/>A/AAAA alias] --> CF[CloudFront<br/>ACM cert + rewrite Function]
   CF --> S3
-  WAF[Shared WAF WebACL] -.associated.- CF
+  WAF[Account WAF WebACL<br/>prod only] -.associated.- CF
   CF -->|/api/contact| API[HTTP API + Lambda + DynamoDB] --> SES[SES email]
   Phone[iOS Shortcut<br/>share sheet] -->|POST /api/feed + token| CF
   CF -->|/api/feed| FEED[HTTP API + Lambda] --> DDB[(DynamoDB)]
@@ -157,35 +157,36 @@ flowchart LR
   CF -->|/feed-media/*| MEDIA
 ```
 
+Each AWS account runs one stage: `dev` in `rwaterman-dev` (690084476262) and `prod` in
+`rwaterman-prod` (582621605246). The CDK app requires `-c stage=<dev|prod>` and throws when
+the credentials belong to another account. The account baseline in
+[`aws-orgs`](https://github.com/rwaterman/aws-orgs) owns the hosted zones, the GitHub OIDC
+provider, the SES domain identity, and (prod only) the CloudFront WebACL and its SSM
+parameter `/account/cloudfront-webacl-arn`; this app imports them.
+
 The home region is `us-west-2`; everything that can live there does (buckets,
-distributions, roles, SSM). CloudFront requires its ACM certificate and a
-`CLOUDFRONT`-scoped WAF WebACL in `us-east-1`, so those sit in thin edge stacks and are
-passed to the home-region stacks with CDK `crossRegionReferences`. DNS is the
-`rickwaterman.com` hosted zone. The legacy `rickgwaterman.com` zone only holds the alias
-records of `WebsiteRedirect`, which 301s every host under it to the same host under
+distributions, roles, SSM). CloudFront requires its ACM certificate in `us-east-1`, so
+that sits in a thin edge stack and is passed to the home-region stacks with CDK
+`crossRegionReferences`. DNS is the stage's hosted zone: `dev.rickwaterman.com` in dev,
+`rickwaterman.com` in prod. The legacy `rickgwaterman.com` zone (prod only) only holds the
+alias records of `WebsiteRedirect`, which 301s every host under it to the same host under
 `rickwaterman.com` (`blog.rickgwaterman.com/x?y` → `blog.rickwaterman.com/x?y`); that stack
 has nothing regional but its certificate, so it lives entirely in us-east-1.
 
-| Stack | Region | Contents |
-| --- | --- | --- |
-| `WebsiteEdge` | us-east-1 | Shared CloudFront WebACL |
-| `WebsiteRedirect` | us-east-1 | Legacy-domain redirect: wildcard certificate, CloudFront + Function, apex and `*` alias records |
-| `WebsiteCert<Env>` | us-east-1 | That environment's DNS-validated ACM certificate |
-| `WebsiteShared` | us-west-2 | OIDC provider, `website-infra-deploy` role, SSM param with the WebACL ARN |
-| `WebsiteSite<Env>` | us-west-2 | Bucket, distribution, DNS, content role, SSM params |
+| Stack | Stage | Region | Contents |
+| --- | --- | --- | --- |
+| `WebsiteRedirect` | prod | us-east-1 | Legacy-domain redirect: wildcard certificate, CloudFront + Function, apex and `*` alias records |
+| `WebsiteCert<Env>` | both | us-east-1 | The stage's DNS-validated ACM certificate |
+| `WebsiteShared<Env>` | both | us-west-2 | `website-infra-deploy` role |
+| `WebsiteSite<Env>` | both | us-west-2 | Bucket, distribution, DNS, content role, SSM params |
 
-### `WebsiteShared` / `WebsiteEdge` — account-wide singletons
-
-Created once and consumed by this repo **and** by `blog` and `notes` (separate CDK apps):
+### `WebsiteShared<Env>` — the infra-deploy role
 
 | Resource | Purpose |
 | --- | --- |
-| GitHub OIDC provider | One per account; all three repos' workflows authenticate through it |
-| `website-infra-deploy` role | Assumed by `infra.yml` from `develop`; can only assume the CDK bootstrap roles in both regions |
-| Shared CloudFront WebACL (`WebsiteEdge`) | One WAF for the apex and every subdomain distribution. Rules: geo-block OFAC-sanctioned countries + RU/BY, 1000 req / 10 min per-IP rate limit, AWS IP-reputation managed group, silent browser challenge on `/contact*` and `/api/contact` |
-| SSM `/website/shared/cloudfront-webacl-arn` (us-west-2) | How blog/notes discover the WebACL at deploy time |
+| `website-infra-deploy` role | Assumed by `infra.yml` through the account's GitHub OIDC provider. Trusts only `repo:rwaterman/website:environment:<stage>` (`StringEquals`); can only assume the CDK bootstrap roles in both regions |
 
-### `WebsiteSite<Env>` — one static-site environment
+### `WebsiteSite<Env>` — the stage's static site
 
 | Env | Stack | Domain | Deploys from | Content role |
 | --- | --- | --- | --- | --- |
@@ -195,22 +196,24 @@ Created once and consumed by this repo **and** by `blog` and `notes` (separate C
 Each environment stack creates: a private, encrypted S3 bucket (prod: `RETAIN`, dev:
 destroy + auto-empty); a CloudFront distribution with Origin Access Control and a
 viewer-request CloudFront Function (directory-index rewrite, `www` redirect on prod);
-Route53 A/AAAA alias records; a branch-scoped OIDC role
+Route53 A/AAAA alias records; an OIDC role trusting only the stage's GitHub
+environment (`repo:rwaterman/website:environment:<stage>`)
 that may only write to that environment's bucket and invalidate its distribution; and
 SSM parameters `/website/<env>/bucket-name` and `/website/<env>/distribution-id` that the
 deploy workflow resolves at run time, so nothing is hardcoded in CI.
 
 A contact form (`/contact` page → HTTP API → Lambda → SES, served through the same
 distribution at `/api/contact`) is enabled per environment via `enableContactForm` in
-`site-config.ts`. Abuse controls, outermost first: the shared WAF issues a silent browser
+`site-config.ts`. Abuse controls, outermost first: the account WAF (prod only) issues a silent browser
 challenge when `/contact` loads, which sets a 24-hour `aws-waf-token` cookie that the
 page's same-origin POST to `/api/contact` carries (curl and scripted clients are stopped
 at the edge; the WAF JS SDK is not used because `GetWebACL` only exposes its URL for
 ATP/ACFP/Bot Control ACLs), the HTTP API stage throttles at
 1 req/s (burst 10), a hidden honeypot field drops bot fills, and the Lambda enforces
 DynamoDB counters of 5 messages/min per IP, 5/min per reply-to address, and 20/min
-globally. Mail is sent from `contact@rickwaterman.com`
-via the DKIM-signed SES domain identity in `SharedStack`. The recipient address lives only
+globally. Mail is sent from `contact@<zone>` (`contact@rickwaterman.com` in prod,
+`contact@dev.rickwaterman.com` in dev) via the DKIM-signed SES domain identity that the
+account baseline creates. The recipient address lives only
 in the SecureString parameter `/website/<env>/contact-recipient` (read by the Lambda at run
 time) and in its verified SES identity — it never appears in the repo, the client, or
 build output. SES identities are regional: the Lambda sends from **us-west-2**, so an
@@ -290,32 +293,40 @@ blank. The post is in `GET /api/feed` at once.
 
 ## CI/CD
 
-Both workflows use OIDC (`id-token: write`) and the repo secrets `AWS_ACCOUNT_ID`,
-`HOSTED_ZONE_ID`, and `REDIRECT_HOSTED_ZONE_ID`; no long-lived AWS keys exist.
+Both workflows use OIDC (`id-token: write`) and run in the GitHub environment that matches
+the target: `dev` for `develop`, `prod` for `main`. Each environment carries the variable
+`AWS_ACCOUNT_ID` (the stage's account) and is restricted to its branch; no long-lived AWS
+keys and no repo secrets exist.
 
 - **`deploy.yml`** — on push to `develop` (→ dev) or `main` (→ prod), or
-  `workflow_dispatch` with an `env` choice. Runs `astro check` and the unit tests, builds
-  with the env's `SITE`, writes a
+  `workflow_dispatch` with an `env` choice (the job runs in that environment). Runs
+  `astro check` and the unit tests, builds with the env's `SITE`, writes a
   `Disallow: /` `robots.txt` on dev, assumes `website-content-<env>`, syncs `dist/` to S3
   (hashed `_astro/*` assets cached immutable for a year, everything else
   `must-revalidate`), then invalidates `/*`.
-- **`infra.yml`** — on push to `develop` touching `infra/**`. Assumes
-  `website-infra-deploy` and runs `cdk deploy --all` — every stack, dev **and** prod.
-  Infra has no `main` path; only content promotion follows `main`.
+- **`infra.yml`** — on push to `develop` or `main` touching `infra/**`. Assumes
+  `website-infra-deploy` in the branch's account and runs
+  `cdk deploy --all -c stage=<dev|prod>`. A push to `develop` touches only the dev
+  account, and a push to `main` only the prod account.
 
 Branching follows git flow: feature branches → `develop` (dev), releases → `main` (prod).
 
 ### First-time / local infra deploy
 
-`website-infra-deploy` is created by `WebsiteShared`, so the very first deploy runs
-locally with admin credentials. Both regions must be CDK-bootstrapped:
+`website-infra-deploy` is created by `WebsiteShared<Env>`, so the very first deploy of a
+stage runs locally with admin credentials for that account. The account baseline
+(`aws-orgs`) must already exist: it bootstraps CDK in both regions and creates the OIDC
+provider, zone, SES identity, and (prod) the WebACL parameter.
 
 ```sh
 cd infra && npm ci
-npx cdk bootstrap aws://<account>/us-west-2 aws://<account>/us-east-1
-AWS_ACCOUNT_ID=<account> HOSTED_ZONE_ID=<zoneId> REDIRECT_HOSTED_ZONE_ID=<legacyZoneId> \
-  npx cdk deploy --all --require-approval never
+npx cdk deploy --all -c stage=dev --profile rwaterman-dev
+npx cdk deploy --all -c stage=prod --profile rwaterman-prod
 ```
 
-Deploy `WebsiteShared` before the blog/notes infra — they import its OIDC provider and
-WebACL ARN.
+`resolveStage` rejects credentials from any other account. Other `cdk` commands take the
+same context, for example `npx cdk synth -c stage=dev --profile rwaterman-dev`. Add
+`-c attachDomains=false` to deploy a distribution with its certificate but no alias domain
+names and no Route 53 records, which is how a domain is moved between distributions.
+
+`npm test` in `infra/` runs the stage config and stack assertions.
