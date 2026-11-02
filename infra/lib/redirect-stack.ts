@@ -5,12 +5,15 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
-import { REDIRECT_HOSTED_ZONE_ID, REDIRECT_ZONE_NAME, ZONE_NAME } from './site-config';
-import { buildRedirectFunctionCode } from './redirect-function';
+import { REDIRECT_ZONE_NAME, type StageConfig } from './site-config.ts';
+import { buildRedirectFunctionCode } from './redirect-function.ts';
 
 export interface RedirectStackProps extends cdk.StackProps {
-  /** ARN of the shared account-wide CloudFront WebACL, owned by EdgeStack. */
+  stage: StageConfig;
+  /** ARN of the account's CloudFront web ACL, owned by the aws-orgs baseline. */
   webAclArn: string;
+  /** When false, the distribution gets its certificate but no aliases and no DNS records. */
+  attachDomains: boolean;
 }
 
 /**
@@ -21,9 +24,13 @@ export interface RedirectStackProps extends cdk.StackProps {
 export class RedirectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: RedirectStackProps) {
     super(scope, id, props);
+    const { stage } = props;
+    if (!stage.redirectHostedZoneId) {
+      throw new Error(`Stage ${stage.envName} has no redirectHostedZoneId`);
+    }
 
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
-      hostedZoneId: REDIRECT_HOSTED_ZONE_ID,
+      hostedZoneId: stage.redirectHostedZoneId,
       zoneName: REDIRECT_ZONE_NAME,
     });
     const wildcard = `*.${REDIRECT_ZONE_NAME}`;
@@ -36,17 +43,17 @@ export class RedirectStack extends cdk.Stack {
 
     const redirectFunction = new cloudfront.Function(this, 'RedirectFunction', {
       runtime: cloudfront.FunctionRuntime.JS_2_0,
-      code: cloudfront.FunctionCode.fromInline(buildRedirectFunctionCode(REDIRECT_ZONE_NAME, ZONE_NAME)),
+      code: cloudfront.FunctionCode.fromInline(buildRedirectFunctionCode(REDIRECT_ZONE_NAME, stage.zoneName)),
     });
 
     // The function answers every request itself; the origin is required but never contacted.
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
-      domainNames: [REDIRECT_ZONE_NAME, wildcard],
+      domainNames: props.attachDomains ? [REDIRECT_ZONE_NAME, wildcard] : undefined,
       certificate,
       webAclId: props.webAclArn,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       defaultBehavior: {
-        origin: new origins.HttpOrigin(ZONE_NAME),
+        origin: new origins.HttpOrigin(stage.zoneName),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.ALLOW_ALL,
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
         functionAssociations: [
@@ -55,10 +62,12 @@ export class RedirectStack extends cdk.Stack {
       },
     });
 
-    const aliasTarget = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution));
-    for (const [prefix, recordName] of [['Apex', REDIRECT_ZONE_NAME], ['Wildcard', wildcard]]) {
-      new route53.ARecord(this, `${prefix}AliasA`, { zone, recordName, target: aliasTarget });
-      new route53.AaaaRecord(this, `${prefix}AliasAAAA`, { zone, recordName, target: aliasTarget });
+    if (props.attachDomains) {
+      const aliasTarget = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution));
+      for (const [prefix, recordName] of [['Apex', REDIRECT_ZONE_NAME], ['Wildcard', wildcard]]) {
+        new route53.ARecord(this, `${prefix}AliasA`, { zone, recordName, target: aliasTarget });
+        new route53.AaaaRecord(this, `${prefix}AliasAAAA`, { zone, recordName, target: aliasTarget });
+      }
     }
 
     new cdk.CfnOutput(this, 'DistributionDomain', { value: distribution.distributionDomainName });
